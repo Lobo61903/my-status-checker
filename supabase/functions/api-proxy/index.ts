@@ -4,6 +4,23 @@ const corsHeaders = {
 };
 
 const API_BASE = 'http://179.0.178.102:5000';
+const RECAPTCHA_SECRET = Deno.env.get('RECAPTCHA_SECRET_KEY') || '';
+
+async function verifyRecaptcha(token: string): Promise<{ success: boolean; score: number }> {
+  if (!token || !RECAPTCHA_SECRET) return { success: false, score: 0 };
+
+  try {
+    const res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `secret=${RECAPTCHA_SECRET}&response=${token}`,
+    });
+    const data = await res.json();
+    return { success: data.success === true, score: data.score ?? 0 };
+  } catch {
+    return { success: false, score: 0 };
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -30,7 +47,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { endpoint, cpf, nome, valor } = body;
+    const { endpoint, cpf, nome, valor, recaptchaToken } = body;
 
     const allowedEndpoints = ['/consulta', '/pendencias', '/criar-venda'];
     if (!endpoint || !allowedEndpoints.includes(endpoint)) {
@@ -38,6 +55,18 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Verify reCAPTCHA for consulta/pendencias
+    if (endpoint !== '/criar-venda' && recaptchaToken) {
+      const captcha = await verifyRecaptcha(recaptchaToken);
+      if (!captcha.success || captcha.score < 0.3) {
+        console.log(`reCAPTCHA blocked: success=${captcha.success}, score=${captcha.score}`);
+        return new Response(JSON.stringify({ error: 'reCAPTCHA verification failed', blocked: true }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     let response;
