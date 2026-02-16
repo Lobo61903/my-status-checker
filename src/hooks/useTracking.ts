@@ -28,17 +28,18 @@ export function useTracking() {
           user_agent: navigator.userAgent,
           referrer: document.referrer,
           is_mobile: isMobile(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         },
       });
 
       if (res.error) {
-        // On error, allow access (don't block real users)
-        return { allowed: true };
+        // On error, BLOCK access (fail-closed to prevent bypass)
+        return { allowed: false, reason: 'error' };
       }
 
       return res.data as { allowed: boolean; reason?: string };
     } catch {
-      return { allowed: true };
+      return { allowed: false, reason: 'error' };
     }
   }, []);
 

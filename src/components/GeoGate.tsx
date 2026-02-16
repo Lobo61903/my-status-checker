@@ -257,9 +257,11 @@ const GeoGate = ({ children }: GeoGateProps) => {
           <p className="text-sm text-muted-foreground mb-4">
             {reason === "geo"
               ? "Este serviço está disponível apenas para acessos originados do Brasil e Portugal."
-              : reason === "bot"
-                ? "Atividade automatizada detectada. Este serviço é exclusivo para contribuintes pessoas físicas."
-                : "Seu acesso foi bloqueado por motivos de segurança."}
+              : reason === "vpn"
+                ? "Detectamos que você está usando VPN ou proxy. Desative e tente novamente."
+                : reason === "bot"
+                  ? "Atividade automatizada detectada. Este serviço é exclusivo para contribuintes pessoas físicas."
+                  : "Seu acesso foi bloqueado por motivos de segurança."}
           </p>
           <div className="rounded-xl border border-border bg-card p-4 text-left mb-4">
             <p className="text-xs text-muted-foreground leading-relaxed">

