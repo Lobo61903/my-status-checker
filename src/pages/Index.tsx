@@ -5,9 +5,20 @@ import ResultScreen from "@/components/ResultScreen";
 
 type Screen = "input" | "loading" | "result";
 
+export interface Pendencia {
+  codigoReceita: string;
+  dataVencimento: string;
+  juros: number;
+  multa: number;
+  numeroReferencia: string;
+  valorPrincipal: number;
+  valorTotal: number;
+}
+
 interface ResultData {
   nome: string;
   nascimento: string;
+  pendencias: Pendencia[];
 }
 
 const Index = () => {
@@ -41,6 +52,7 @@ const Index = () => {
         nome={result.nome}
         nascimento={result.nascimento}
         cpf={cpf}
+        pendencias={result.pendencias}
         onBack={handleBack}
       />
     );
