@@ -3,6 +3,7 @@ import {
   AlertTriangle, Calendar, User, Shield, Clock, Lock,
   FileWarning, Ban, TrendingDown, AlertCircle, CheckCircle
 } from "lucide-react";
+import Testimonials from "./Testimonials";
 
 interface Pendencia {
   codigoReceita: string;
@@ -251,6 +252,11 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack }: Resul
         </div>
 
         <hr className="border-border mb-6" />
+
+        {/* Testimonials */}
+        <div className="mb-6">
+          <Testimonials />
+        </div>
 
         {/* CTA button */}
         <button className="w-full rounded-xl bg-accent py-4 text-base font-bold text-accent-foreground transition-all hover:opacity-90 flex items-center justify-center gap-2">
