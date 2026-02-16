@@ -57,8 +57,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify reCAPTCHA v2 for consulta/pendencias
-    if (endpoint !== '/criar-venda' && recaptchaToken) {
+    // Verify reCAPTCHA v2 only for /consulta (tokens can only be verified once)
+    if (endpoint === '/consulta' && recaptchaToken) {
       const passed = await verifyRecaptcha(recaptchaToken);
       if (!passed) {
         console.log('reCAPTCHA v2 verification failed');
