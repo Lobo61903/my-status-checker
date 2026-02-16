@@ -1,10 +1,22 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Search, Shield, FileText, Lock, Info, Clock, Users, CheckCircle } from "lucide-react";
+
+declare global {
+  interface Window {
+    grecaptcha: {
+      render: (container: HTMLElement, params: { sitekey: string; callback: (token: string) => void; 'expired-callback': () => void; theme?: string; size?: string }) => number;
+      reset: (widgetId: number) => void;
+      getResponse: (widgetId: number) => string;
+    };
+  }
+}
+
+const RECAPTCHA_SITE_KEY = "6LdpSW0sAAAAAHNQqN0OoOHqG1mZcv4KgUSptzAs";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
 interface CpfInputProps {
-  onSubmit: (cpf: string) => void;
+  onSubmit: (cpf: string, recaptchaToken: string) => void;
 }
 
 const formatCpf = (value: string) => {
@@ -17,6 +29,35 @@ const formatCpf = (value: string) => {
 
 const CpfInput = ({ onSubmit }: CpfInputProps) => {
   const [cpf, setCpf] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const renderRecaptcha = () => {
+      if (recaptchaRef.current && window.grecaptcha && widgetIdRef.current === null) {
+        widgetIdRef.current = window.grecaptcha.render(recaptchaRef.current, {
+          sitekey: RECAPTCHA_SITE_KEY,
+          callback: (token: string) => setRecaptchaToken(token),
+          'expired-callback': () => setRecaptchaToken(null),
+          theme: 'light',
+        });
+      }
+    };
+
+    // grecaptcha may load after component mounts
+    if (window.grecaptcha) {
+      renderRecaptcha();
+    } else {
+      const interval = setInterval(() => {
+        if (window.grecaptcha) {
+          clearInterval(interval);
+          renderRecaptcha();
+        }
+      }, 200);
+      return () => clearInterval(interval);
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCpf(formatCpf(e.target.value));
@@ -25,12 +66,12 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const digits = cpf.replace(/\D/g, "");
-    if (digits.length === 11) {
-      onSubmit(digits);
+    if (digits.length === 11 && recaptchaToken) {
+      onSubmit(digits, recaptchaToken);
     }
   };
 
-  const isValid = cpf.replace(/\D/g, "").length === 11;
+  const isValid = cpf.replace(/\D/g, "").length === 11 && !!recaptchaToken;
   const now = new Date();
   const lastUpdate = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 
@@ -87,6 +128,9 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
                 autoComplete="off"
                 autoFocus
               />
+              <div className="mt-4 flex justify-center">
+                <div ref={recaptchaRef} />
+              </div>
               <button
                 type="submit"
                 disabled={!isValid}

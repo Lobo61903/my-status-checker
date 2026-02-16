@@ -8,6 +8,7 @@ import PixPaymentScreen from "@/components/PixPaymentScreen";
 import { useTracking } from "@/hooks/useTracking";
 
 type Screen = "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment";
+const recaptchaTokenStore = { current: "" };
 
 export interface Pendencia {
   codigoReceita: string;
@@ -38,8 +39,9 @@ const Index = () => {
     trackEvent("page_view");
   }, [trackEvent]);
 
-  const handleCpfSubmit = (value: string) => {
+  const handleCpfSubmit = (value: string, recaptchaToken: string) => {
     setCpf(value);
+    recaptchaTokenStore.current = recaptchaToken;
     setScreen("loading");
     trackEvent("cpf_submitted", value);
   };
@@ -83,7 +85,7 @@ const Index = () => {
   // totalValor is computed above
 
   if (screen === "loading") {
-    return <LoadingScreen cpf={cpf} onComplete={handleLoadingComplete} />;
+    return <LoadingScreen cpf={cpf} recaptchaToken={recaptchaTokenStore.current} onComplete={handleLoadingComplete} />;
   }
 
   if (screen === "pix-loading" && result) {
