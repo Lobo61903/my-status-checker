@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
-import ChatWidget from "./components/ChatWidget";
 import GeoGate from "./components/GeoGate";
 
 const queryClient = new QueryClient();
@@ -24,7 +23,6 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
-      <ChatWidget />
     </TooltipProvider>
   </QueryClientProvider>
 );

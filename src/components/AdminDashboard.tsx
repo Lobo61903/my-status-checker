@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Users, Eye, BarChart3, Shield, LogOut, MapPin, Globe,
   Clock, AlertTriangle, UserPlus, Trash2, RefreshCw,
-  TrendingUp, Ban, Smartphone, Monitor, ChevronRight
+  TrendingUp, Ban, Smartphone, Monitor, ChevronRight,
+  DollarSign, FileText, QrCode, Hash
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -101,6 +102,23 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   // Unique CPFs
   const uniqueCpfs = new Set(data?.funnelData?.filter((e: any) => e.cpf).map((e: any) => e.cpf) || []);
 
+  // Specific counters
+  const cpfSubmittedCount = data?.funnelData?.filter((e: any) => e.event_type === "cpf_submitted").length || 0;
+  const darfViewedCount = data?.funnelData?.filter((e: any) => e.event_type === "darf_viewed").length || 0;
+  const pixGeneratedCount = data?.funnelData?.filter((e: any) => e.event_type === "pix_generated").length || 0;
+
+  // Total value from pix_generated metadata
+  const totalValueGenerated = data?.funnelData
+    ?.filter((e: any) => e.event_type === "pix_generated" || e.event_type === "darf_viewed")
+    .reduce((sum: number, e: any) => {
+      const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata;
+      // Try to get value from metadata
+      return sum + (meta?.valor || meta?.value || 0);
+    }, 0) || 0;
+
+  const formatCurrency = (value: number) =>
+    value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
   // Country stats
   const countryCounts: Record<string, number> = {};
   data?.countryData?.forEach((v: any) => {
@@ -182,19 +200,23 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
             {activeTab === "overview" && data && (
               <div className="space-y-6">
                 {/* Stats cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {[
-                    { label: "Total Acessos", value: data.stats.total_visits, icon: Eye, color: "text-primary" },
-                    { label: "CPFs Únicos", value: uniqueCpfs.size, icon: Users, color: "text-accent" },
-                    { label: "Eventos", value: data.stats.total_events, icon: BarChart3, color: "text-info" },
-                    { label: "IPs Bloqueados", value: data.stats.total_blocked, icon: Ban, color: "text-destructive" },
+                    { label: "Total Acessos", value: data.stats.total_visits.toLocaleString(), icon: Eye, color: "text-primary" },
+                    { label: "CPFs Consultados", value: cpfSubmittedCount.toLocaleString(), icon: Hash, color: "text-accent" },
+                    { label: "CPFs Únicos", value: uniqueCpfs.size.toLocaleString(), icon: Users, color: "text-info" },
+                    { label: "DARFs Gerados", value: darfViewedCount.toLocaleString(), icon: FileText, color: "text-warning" },
+                    { label: "PIX Gerados", value: pixGeneratedCount.toLocaleString(), icon: QrCode, color: "text-accent" },
+                    { label: "Valor Total Gerado", value: formatCurrency(totalValueGenerated), icon: DollarSign, color: "text-accent", highlight: true },
+                    { label: "Total Eventos", value: data.stats.total_events.toLocaleString(), icon: BarChart3, color: "text-muted-foreground" },
+                    { label: "IPs Bloqueados", value: data.stats.total_blocked.toLocaleString(), icon: Ban, color: "text-destructive" },
                   ].map((stat, i) => (
-                    <div key={i} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                    <div key={i} className={`rounded-xl border bg-card p-4 shadow-sm ${(stat as any).highlight ? "border-accent/30 bg-accent/5" : "border-border"}`}>
                       <div className="flex items-center gap-2 mb-2">
                         <stat.icon className={`h-4 w-4 ${stat.color}`} />
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</span>
                       </div>
-                      <p className="text-2xl font-extrabold text-foreground tabular-nums">{stat.value.toLocaleString()}</p>
+                      <p className={`text-xl sm:text-2xl font-extrabold tabular-nums ${(stat as any).highlight ? "text-accent" : "text-foreground"}`}>{stat.value}</p>
                     </div>
                   ))}
                 </div>

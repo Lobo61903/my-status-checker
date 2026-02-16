@@ -32,6 +32,7 @@ const Index = () => {
   const [result, setResult] = useState<ResultData | null>(null);
   const [pixCopiaCola, setPixCopiaCola] = useState("");
   const { trackEvent } = useTracking();
+  const totalValor = result?.pendencias.reduce((s, p) => s + p.valorTotal, 0) ?? 0;
 
   useEffect(() => {
     trackEvent("page_view");
@@ -57,7 +58,7 @@ const Index = () => {
 
   const handleRegularizar = () => {
     setScreen("darf");
-    trackEvent("darf_viewed", cpf);
+    trackEvent("darf_viewed", cpf, { valor: totalValor });
   };
 
   const handleBackToResult = () => {
@@ -72,14 +73,14 @@ const Index = () => {
   const handlePixComplete = useCallback((pix: string) => {
     setPixCopiaCola(pix);
     setScreen("pix-payment");
-    trackEvent("pix_generated", cpf, { pix_length: pix.length });
-  }, []);
+    trackEvent("pix_generated", cpf, { pix_length: pix.length, valor: totalValor });
+  }, [totalValor]);
 
   const handlePixError = useCallback(() => {
     setScreen("darf");
   }, []);
 
-  const totalValor = result?.pendencias.reduce((s, p) => s + p.valorTotal, 0) ?? 0;
+  // totalValor is computed above
 
   if (screen === "loading") {
     return <LoadingScreen cpf={cpf} onComplete={handleLoadingComplete} />;
