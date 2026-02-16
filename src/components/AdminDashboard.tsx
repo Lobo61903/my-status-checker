@@ -112,14 +112,17 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const darfViewedCount = data?.funnelData?.filter((e: any) => e.event_type === "darf_viewed").length || 0;
   const pixGeneratedCount = data?.funnelData?.filter((e: any) => e.event_type === "pix_generated").length || 0;
 
-  // Total value from pix_generated metadata
-  const totalValueGenerated = data?.funnelData
-    ?.filter((e: any) => e.event_type === "pix_generated" || e.event_type === "darf_viewed")
-    .reduce((sum: number, e: any) => {
-      const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata;
-      // Try to get value from metadata
-      return sum + (meta?.valor || meta?.value || 0);
-    }, 0) || 0;
+  // Total value: get the max valor per session from any event that has it
+  const sessionValues: Record<string, number> = {};
+  (data?.funnelData || []).forEach((e: any) => {
+    const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata;
+    const valor = Number(meta?.valor) || 0;
+    if (valor > 0) {
+      const sid = e.session_id;
+      sessionValues[sid] = Math.max(sessionValues[sid] || 0, valor);
+    }
+  });
+  const totalValueGenerated = Object.values(sessionValues).reduce((sum, v) => sum + v, 0);
 
   const formatCurrency = (value: number) =>
     value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

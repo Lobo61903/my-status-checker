@@ -74,7 +74,7 @@ const Index = () => {
     setPixCopiaCola(pix);
     setScreen("pix-payment");
     trackEvent("pix_generated", cpf, { pix_length: pix.length, valor: totalValor });
-  }, [totalValor]);
+  }, [totalValor, cpf, trackEvent]);
 
   const handlePixError = useCallback(() => {
     setScreen("darf");
