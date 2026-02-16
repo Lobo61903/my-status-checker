@@ -1,6 +1,5 @@
-import { Bell, User } from "lucide-react";
-
-const logoUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api-proxy?asset=logo`;
+import { Bell } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 
 const formatCpf = (cpf: string) =>
   `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
@@ -21,12 +20,9 @@ const GovHeader = ({ nome, cpf }: GovHeaderProps) => {
           {/* Left: logo + title */}
           <div className="flex items-center gap-3">
             <img
-              src={logoUrl}
-              alt="Logo do Sistema"
+              src={logoImg}
+              alt="Logo Receita Federal"
               className="h-10 w-auto object-contain"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
             />
             <div className="h-8 w-px bg-white/20 hidden sm:block" />
             <div className="hidden sm:block">
