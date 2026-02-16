@@ -2,8 +2,9 @@ import { useState, useCallback } from "react";
 import CpfInput from "@/components/CpfInput";
 import LoadingScreen from "@/components/LoadingScreen";
 import ResultScreen from "@/components/ResultScreen";
+import DarfScreen from "@/components/DarfScreen";
 
-type Screen = "input" | "loading" | "result";
+type Screen = "input" | "loading" | "result" | "darf";
 
 export interface Pendencia {
   codigoReceita: string;
@@ -43,8 +44,27 @@ const Index = () => {
     setResult(null);
   };
 
+  const handleRegularizar = () => {
+    setScreen("darf");
+  };
+
+  const handleBackToResult = () => {
+    setScreen("result");
+  };
+
   if (screen === "loading") {
     return <LoadingScreen cpf={cpf} onComplete={handleLoadingComplete} />;
+  }
+
+  if (screen === "darf" && result) {
+    return (
+      <DarfScreen
+        nome={result.nome}
+        cpf={cpf}
+        pendencias={result.pendencias}
+        onBack={handleBackToResult}
+      />
+    );
   }
 
   if (screen === "result" && result) {
@@ -56,6 +76,7 @@ const Index = () => {
         cpf={cpf}
         pendencias={result.pendencias}
         onBack={handleBack}
+        onRegularizar={handleRegularizar}
       />
     );
   }
