@@ -1,4 +1,4 @@
-import { Bell, Menu } from "lucide-react";
+import { Bell, Menu, Wifi, BatteryFull, Signal } from "lucide-react";
 import { useState } from "react";
 import logoImg from "@/assets/logo.png";
 
@@ -11,66 +11,55 @@ interface GovHeaderProps {
 }
 
 const GovHeader = ({ nome, cpf }: GovHeaderProps) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-
   return (
-    <header>
-      {/* Top green stripe */}
-      <div className="h-1 w-full bg-accent" />
-      {/* Header bar */}
-      <div className="gov-header px-4 py-2.5 sm:py-3">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
-          {/* Left: logo + title */}
-          <div className="flex items-center gap-2 sm:gap-3">
+    <header className="sticky top-0 z-50">
+      {/* Status bar - simula barra de status do celular */}
+      <div className="bg-[hsl(var(--gov-dark))] px-5 py-1 flex items-center justify-between">
+        <span className="text-[10px] font-medium text-white/70">
+          {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </span>
+        <div className="flex items-center gap-1.5">
+          <Signal className="h-2.5 w-2.5 text-white/70" />
+          <Wifi className="h-2.5 w-2.5 text-white/70" />
+          <BatteryFull className="h-3 w-3 text-white/70" />
+        </div>
+      </div>
+
+      {/* App header */}
+      <div className="gov-header px-4 py-2.5 backdrop-blur-md">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
             <img
               src={logoImg}
-              alt="Logo Receita Federal"
-              className="h-8 sm:h-10 w-auto object-contain"
+              alt="Logo"
+              className="h-8 w-auto object-contain"
             />
-            <div className="h-6 sm:h-8 w-px bg-white/20" />
             <div>
-              <h2 className="text-xs sm:text-sm font-bold text-white tracking-wide leading-tight">
+              <h2 className="text-[13px] font-bold text-white leading-tight">
                 Meu Imposto de Renda
               </h2>
-              <p className="text-[8px] sm:text-[10px] text-white/50 tracking-wide uppercase">
-                Receita Federal do Brasil
+              <p className="text-[9px] text-white/40 tracking-wider uppercase">
+                Receita Federal
               </p>
             </div>
           </div>
 
-          {/* Right: user info */}
           {nome && cpf ? (
-            <>
-              {/* Desktop */}
-              <div className="hidden sm:flex items-center gap-3">
-                <Bell className="h-4 w-4 text-white/50" />
-                <div className="text-right">
-                  <p className="text-xs font-bold text-white leading-tight">{nome}</p>
-                  <p className="text-[10px] text-white/50">CPF: {formatCpf(cpf)}</p>
-                </div>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-xs font-bold text-white">
-                  {nome.charAt(0)}
-                </div>
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-white/40" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/80 text-[11px] font-bold text-white shadow-lg">
+                {nome.charAt(0)}
               </div>
-              {/* Mobile */}
-              <div className="flex sm:hidden items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-[10px] font-bold text-white">
-                  {nome.charAt(0)}
-                </div>
-              </div>
-            </>
+            </div>
           ) : (
-            <div className="flex items-center gap-2 text-[10px] text-white/50">
-              <span className="hidden sm:inline">gov.br</span>
-              <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10">
-                <Menu className="h-3.5 w-3.5 text-white/60" />
-              </div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
+              <Menu className="h-4 w-4 text-white/60" />
             </div>
           )}
         </div>
       </div>
-      {/* Bottom gold stripe */}
-      <div className="h-0.5 sm:h-1 w-full" style={{ background: `linear-gradient(90deg, hsl(40 95% 50%), hsl(40 95% 55%))` }} />
+      {/* Thin accent line */}
+      <div className="h-[2px] w-full bg-gradient-to-r from-accent via-[hsl(var(--gov-gold))] to-accent" />
     </header>
   );
 };
