@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Shield } from "lucide-react";
+import { Search, Shield, FileText } from "lucide-react";
 import GovHeader from "./GovHeader";
 
 interface CpfInputProps {
@@ -34,21 +34,24 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
   return (
     <div className="min-h-screen bg-background">
       <GovHeader />
-      <div className="flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md animate-fade-in-up">
+      <div className="flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-lg animate-fade-in-up">
+          {/* Icon and Title */}
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg gradient-primary">
-              <Search className="h-7 w-7 text-primary-foreground" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary shadow-lg">
+              <FileText className="h-8 w-8 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Consulta de Pendências</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Digite seu CPF para verificar sua situação cadastral
+            <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
+              Consulta de Pendências
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Informe o CPF para verificar a situação cadastral do contribuinte
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <label className="mb-2 block text-sm font-semibold text-foreground">
+            <div className="rounded-2xl border border-border bg-card p-8 shadow-md">
+              <label className="mb-2 block text-sm font-bold text-foreground uppercase tracking-wider">
                 CPF do Contribuinte
               </label>
               <input
@@ -56,22 +59,23 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
                 value={cpf}
                 onChange={handleChange}
                 placeholder="000.000.000-00"
-                className="w-full rounded-md border border-input bg-background px-4 py-3 text-lg font-medium text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 transition-all"
+                className="w-full rounded-xl border-2 border-input bg-background px-4 py-4 text-xl font-semibold text-foreground tracking-wider placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-4 focus:ring-ring/10 transition-all"
                 inputMode="numeric"
               />
               <button
                 type="submit"
                 disabled={!isValid}
-                className="mt-4 w-full rounded-md gradient-primary px-4 py-3 text-base font-semibold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="mt-5 w-full rounded-xl gradient-primary px-4 py-4 text-base font-bold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
               >
+                <Search className="h-5 w-5" />
                 Consultar Situação
               </button>
             </div>
           </form>
 
-          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Shield className="h-4 w-4 text-primary" />
-            <span>Conexão segura • Dados protegidos por criptografia</span>
+          <div className="mt-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Shield className="h-4 w-4 text-accent" />
+            <span>Ambiente seguro • Dados protegidos por criptografia SSL</span>
           </div>
         </div>
       </div>

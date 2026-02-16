@@ -4,29 +4,31 @@ const GovHeader = () => {
   return (
     <header>
       {/* Top green stripe */}
-      <div className="h-1 w-full bg-primary" />
+      <div className="h-1.5 w-full bg-accent" />
       {/* Header bar */}
-      <div className="gov-header px-4 py-3">
-        <div className="mx-auto flex max-w-4xl items-center gap-3">
+      <div className="gov-header px-4 py-4">
+        <div className="mx-auto flex max-w-4xl items-center gap-4">
           <img
             src={logoUrl}
-            alt="Logo"
-            className="h-10 w-auto object-contain"
+            alt="Logo do Sistema"
+            className="h-12 w-auto object-contain"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
-          <div className="h-8 w-px bg-white/20" />
+          <div className="h-10 w-px bg-white/20" />
           <div>
-            <h2 className="text-sm font-bold text-white tracking-wide">
+            <h2 className="text-base font-bold text-white tracking-wide">
               Sistema de Consulta de Pendências
             </h2>
-            <p className="text-xs text-white/60">Portal de Regularização</p>
+            <p className="text-xs text-white/50 tracking-wide uppercase">
+              Portal de Regularização Fiscal
+            </p>
           </div>
         </div>
       </div>
-      {/* Bottom accent stripe */}
-      <div className="h-0.5 w-full bg-accent" />
+      {/* Bottom gold stripe */}
+      <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, hsl(40 95% 50%), hsl(40 95% 55%))` }} />
     </header>
   );
 };

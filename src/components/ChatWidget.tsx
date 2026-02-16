@@ -96,18 +96,18 @@ const ChatWidget = () => {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-110"
+          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-2xl gradient-primary text-primary-foreground shadow-lg transition-transform hover:scale-110"
         >
           <MessageCircle className="h-6 w-6" />
         </button>
       )}
 
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-[360px] flex-col rounded-2xl border border-border bg-card shadow-2xl animate-fade-in-up">
-          <div className="flex items-center justify-between rounded-t-2xl bg-primary px-4 py-3">
+        <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-[360px] flex-col rounded-2xl border border-border bg-card shadow-2xl animate-fade-in-up overflow-hidden">
+          <div className="flex items-center justify-between gradient-primary px-4 py-3">
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-primary-foreground" />
-              <span className="font-semibold text-primary-foreground">Assistente</span>
+              <span className="font-bold text-primary-foreground">Assistente Virtual</span>
             </div>
             <button onClick={() => setOpen(false)} className="text-primary-foreground/80 hover:text-primary-foreground">
               <X className="h-5 w-5" />
@@ -118,29 +118,29 @@ const ChatWidget = () => {
             {messages.map((m, i) => (
               <div key={i} className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 {m.role === "assistant" && (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                     <Bot className="h-4 w-4 text-primary" />
                   </div>
                 )}
                 <div
                   className={`max-w-[75%] rounded-xl px-3 py-2 text-sm ${
                     m.role === "user"
-                      ? "bg-primary text-primary-foreground"
+                      ? "gradient-primary text-primary-foreground"
                       : "bg-muted text-foreground"
                   }`}
                 >
                   {m.content}
                 </div>
                 {m.role === "user" && (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/20">
-                    <User className="h-4 w-4 text-accent-foreground" />
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                    <User className="h-4 w-4 text-accent" />
                   </div>
                 )}
               </div>
             ))}
             {isLoading && messages[messages.length - 1]?.role === "user" && (
               <div className="flex gap-2">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                   <Bot className="h-4 w-4 text-primary" />
                 </div>
                 <div className="rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
@@ -163,13 +163,13 @@ const ChatWidget = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Digite sua dúvida..."
-                className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+                className="flex-1 rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
                 disabled={isLoading}
               />
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-40"
+                className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary text-primary-foreground disabled:opacity-40"
               >
                 <Send className="h-4 w-4" />
               </button>

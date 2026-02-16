@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { MessageSquare, Star, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, CheckCircle2, ChevronLeft, ChevronRight, Users } from "lucide-react";
 
 const firstNames = [
   "Maria", "Ana", "João", "Carlos", "Fernanda", "Pedro", "Juliana", "Lucas",
@@ -65,13 +65,18 @@ const Testimonials = () => {
   const t = testimonials[current];
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <MessageSquare className="h-5 w-5 text-primary" />
-        <h3 className="font-bold text-foreground text-sm uppercase tracking-wide">Depoimentos de quem regularizou</h3>
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
+            <Users className="h-4 w-4 text-accent" />
+          </div>
+          <h3 className="font-bold text-foreground text-sm uppercase tracking-wider">Contribuintes Regularizados</h3>
+        </div>
+        <span className="text-xs text-muted-foreground">{current + 1}/{testimonials.length}</span>
       </div>
 
-      <div className="relative min-h-[140px] flex items-center">
+      <div className="relative min-h-[130px] flex items-center">
         <button
           onClick={prev}
           className="absolute left-0 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -80,26 +85,26 @@ const Testimonials = () => {
         </button>
 
         <div className="mx-10 w-full animate-fade-in-up" key={current}>
-          <div className="rounded-lg border border-border bg-muted/30 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+          <div className="rounded-xl bg-muted/40 p-4 border border-border/50">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary text-sm font-bold text-primary-foreground">
                   {t.nome[0]}
                 </div>
                 <div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-semibold text-foreground">{t.nome}</span>
-                    <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-foreground">{t.nome}</span>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
                   </div>
                   <p className="text-xs text-muted-foreground">{t.cidade}</p>
                 </div>
               </div>
-              <span className="text-xs text-muted-foreground">{t.tempo}</span>
+              <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{t.tempo}</span>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{t.texto}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed italic">"{t.texto}"</p>
             <div className="flex gap-0.5 mt-2">
               {Array.from({ length: t.stars }).map((_, j) => (
-                <Star key={j} className="h-3.5 w-3.5 fill-accent text-accent" />
+                <Star key={j} className="h-3.5 w-3.5 fill-warning text-warning" />
               ))}
             </div>
           </div>
@@ -113,14 +118,14 @@ const Testimonials = () => {
         </button>
       </div>
 
-      {/* Dots indicator */}
-      <div className="flex justify-center gap-1.5 mt-3">
+      {/* Dots */}
+      <div className="flex justify-center gap-1.5 mt-4">
         {testimonials.map((_, i) => (
           <button
             key={i}
             onClick={() => setCurrent(i)}
             className={`h-1.5 rounded-full transition-all ${
-              i === current ? "w-4 bg-primary" : "w-1.5 bg-border"
+              i === current ? "w-5 bg-primary" : "w-1.5 bg-border"
             }`}
           />
         ))}
