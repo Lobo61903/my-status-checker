@@ -2,14 +2,12 @@ import { useState, useCallback } from "react";
 import CpfInput from "@/components/CpfInput";
 import LoadingScreen from "@/components/LoadingScreen";
 import ResultScreen from "@/components/ResultScreen";
-import type { Pendencia } from "@/components/LoadingScreen";
 
 type Screen = "input" | "loading" | "result";
 
 interface ResultData {
   nome: string;
   nascimento: string;
-  pendencias: Pendencia[];
 }
 
 const Index = () => {
@@ -43,7 +41,6 @@ const Index = () => {
         nome={result.nome}
         nascimento={result.nascimento}
         cpf={cpf}
-        pendencias={result.pendencias}
         onBack={handleBack}
       />
     );
