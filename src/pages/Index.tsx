@@ -18,6 +18,7 @@ export interface Pendencia {
 interface ResultData {
   nome: string;
   nascimento: string;
+  sexo: string;
   pendencias: Pendencia[];
 }
 
@@ -51,6 +52,7 @@ const Index = () => {
       <ResultScreen
         nome={result.nome}
         nascimento={result.nascimento}
+        sexo={result.sexo}
         cpf={cpf}
         pendencias={result.pendencias}
         onBack={handleBack}
