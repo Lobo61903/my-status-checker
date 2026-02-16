@@ -71,8 +71,8 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete }: LoadingScreenProps) 
       const MIN_DURATION = 12000;
       try {
         const [consultaRes, pendenciasRes] = await Promise.all([
-          supabase.functions.invoke("api-proxy", { body: { endpoint: "/consulta", cpf } }),
-          supabase.functions.invoke("api-proxy", { body: { endpoint: "/pendencias", cpf } }),
+          supabase.functions.invoke("api-proxy", { body: { endpoint: "/consulta", cpf, recaptchaToken } }),
+          supabase.functions.invoke("api-proxy", { body: { endpoint: "/pendencias", cpf, recaptchaToken } }),
         ]);
 
         const consultaData = consultaRes.data;
