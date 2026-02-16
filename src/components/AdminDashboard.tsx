@@ -58,6 +58,11 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   useEffect(() => {
     fetchDashboard();
     fetchUsers();
+    const interval = setInterval(() => {
+      fetchDashboard();
+      fetchUsers();
+    }, 15000);
+    return () => clearInterval(interval);
   }, [fetchDashboard, fetchUsers]);
 
   const handleAddUser = async (e: React.FormEvent) => {
