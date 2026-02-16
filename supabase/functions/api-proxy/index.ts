@@ -10,6 +10,24 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Handle GET for logo proxy
+  const url = new URL(req.url);
+  if (url.searchParams.get('asset') === 'logo') {
+    try {
+      const response = await fetch(`${API_BASE}/logo`);
+      const blob = await response.blob();
+      return new Response(blob, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': response.headers.get('Content-Type') || 'image/png',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    } catch (error) {
+      return new Response('Logo not found', { status: 404, headers: corsHeaders });
+    }
+  }
+
   try {
     const { endpoint, cpf } = await req.json();
 
