@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search, Shield } from "lucide-react";
+import GovHeader from "./GovHeader";
 
 interface CpfInputProps {
   onSubmit: (cpf: string) => void;
@@ -31,44 +32,47 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
   const isValid = cpf.replace(/\D/g, "").length === 11;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md animate-fade-in-up">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary">
-            <Search className="h-8 w-8 text-primary-foreground" />
+    <div className="min-h-screen bg-background">
+      <GovHeader />
+      <div className="flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-md animate-fade-in-up">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg gradient-primary">
+              <Search className="h-7 w-7 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">Consulta de Pendências</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Digite seu CPF para verificar sua situação cadastral
+            </p>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Consulta de Pendências</h1>
-          <p className="mt-2 text-muted-foreground">
-            Digite seu CPF para verificar sua situação
-          </p>
-        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
-            <label className="mb-2 block text-sm font-medium text-foreground">
-              CPF
-            </label>
-            <input
-              type="text"
-              value={cpf}
-              onChange={handleChange}
-              placeholder="000.000.000-00"
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-lg font-medium text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 transition-all"
-              inputMode="numeric"
-            />
-            <button
-              type="submit"
-              disabled={!isValid}
-              className="mt-4 w-full rounded-xl gradient-primary px-4 py-3 text-base font-semibold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Consultar
-            </button>
+          <form onSubmit={handleSubmit}>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <label className="mb-2 block text-sm font-semibold text-foreground">
+                CPF do Contribuinte
+              </label>
+              <input
+                type="text"
+                value={cpf}
+                onChange={handleChange}
+                placeholder="000.000.000-00"
+                className="w-full rounded-md border border-input bg-background px-4 py-3 text-lg font-medium text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 transition-all"
+                inputMode="numeric"
+              />
+              <button
+                type="submit"
+                disabled={!isValid}
+                className="mt-4 w-full rounded-md gradient-primary px-4 py-3 text-base font-semibold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Consultar Situação
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Shield className="h-4 w-4 text-primary" />
+            <span>Conexão segura • Dados protegidos por criptografia</span>
           </div>
-        </form>
-
-        <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Shield className="h-4 w-4 text-accent" />
-          <span>Seus dados estão protegidos com criptografia</span>
         </div>
       </div>
     </div>

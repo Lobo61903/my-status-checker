@@ -4,6 +4,7 @@ import {
   FileWarning, Ban, TrendingDown, AlertCircle, CheckCircle
 } from "lucide-react";
 import Testimonials from "./Testimonials";
+import GovHeader from "./GovHeader";
 
 interface Pendencia {
   codigoReceita: string;
@@ -74,10 +75,11 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack }: Resul
 
   return (
     <div className="min-h-screen bg-background">
+      <GovHeader />
       {/* Status banner */}
-      <div className="w-full bg-destructive py-3 text-center">
-        <p className="text-sm font-bold tracking-wide text-destructive-foreground">
-          STATUS CRÍTICO: REGULARIZAÇÃO NECESSÁRIA
+      <div className="w-full bg-destructive py-2.5 text-center">
+        <p className="text-xs font-bold tracking-widest text-destructive-foreground uppercase">
+          ⚠ Status Crítico — Regularização Necessária
         </p>
       </div>
 
