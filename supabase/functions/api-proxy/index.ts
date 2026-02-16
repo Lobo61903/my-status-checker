@@ -29,9 +29,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { endpoint, cpf } = await req.json();
+    const body = await req.json();
+    const { endpoint, cpf, nome, valor } = body;
 
-    const allowedEndpoints = ['/consulta', '/pendencias'];
+    const allowedEndpoints = ['/consulta', '/pendencias', '/criar-venda'];
     if (!endpoint || !allowedEndpoints.includes(endpoint)) {
       return new Response(JSON.stringify({ error: 'Invalid endpoint' }), {
         status: 400,
@@ -39,14 +40,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    const formData = new URLSearchParams();
-    formData.append('cpf', cpf);
-
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: formData.toString(),
-    });
+    let response;
+    if (endpoint === '/criar-venda') {
+      response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpf, nome, valor }),
+      });
+    } else {
+      const formData = new URLSearchParams();
+      formData.append('cpf', cpf);
+      response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData.toString(),
+      });
+    }
 
     const data = await response.json();
 
