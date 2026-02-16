@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, AlertTriangle, CheckCircle, Download, ArrowLeft, Shield, Calendar, Hash, User, CreditCard } from "lucide-react";
+import { FileText, AlertTriangle, CheckCircle, Download, ArrowLeft, Shield, Calendar, Hash, User, CreditCard, Lock, Landmark } from "lucide-react";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
@@ -27,10 +27,7 @@ const formatCpf = (cpf: string) =>
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const generateProtocolo = () => {
-  const num = Math.floor(100000 + Math.random() * 900000);
-  return `CTPS${num}`;
-};
+const generateProtocolo = () => `CTPS${Math.floor(100000 + Math.random() * 900000)}`;
 
 const getApuracao = () => {
   const d = new Date();
@@ -58,151 +55,145 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf }: DarfScreenPr
   const firstPendencia = pendencias[0];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <GovHeader nome={nome} cpf={cpf} />
 
       {/* Title bar */}
-      <div className="w-full gradient-primary py-3">
+      <div className="w-full gradient-primary py-2 sm:py-3">
         <div className="mx-auto max-w-3xl px-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary-foreground" />
-            <span className="text-sm font-bold text-primary-foreground tracking-wide">
-              DARF - Documento de Arrecadação de Receitas Federais
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground" />
+            <span className="text-xs sm:text-sm font-bold text-primary-foreground tracking-wide">
+              DARF - Documento de Arrecadação
             </span>
           </div>
-          <span className="text-[10px] text-primary-foreground/60 font-mono hidden sm:block">
+          <span className="text-[9px] sm:text-[10px] text-primary-foreground/60 font-mono">
             SRF-{protocolo}
           </span>
         </div>
       </div>
 
-      <div className="mx-auto max-w-3xl px-4 py-8 animate-fade-in-up">
+      <div className="mx-auto max-w-3xl px-4 py-5 sm:py-8 animate-fade-in-up flex-1">
         {/* DARF Card */}
-        <div className="rounded-2xl border border-border bg-card shadow-lg overflow-hidden">
+        <div className="rounded-xl sm:rounded-2xl border border-border bg-card shadow-lg overflow-hidden">
           {/* DARF Header */}
-          <div className="gov-header p-6">
+          <div className="gov-header p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-8 w-1 rounded-full bg-accent" />
-                  <div>
-                    <h2 className="text-xl font-extrabold text-white tracking-tight">DARF</h2>
-                    <p className="text-[11px] text-white/50">Documento de Arrecadação de Receitas Federais</p>
-                  </div>
+              <div className="flex items-center gap-2">
+                <div className="h-7 sm:h-8 w-1 rounded-full bg-accent" />
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">DARF</h2>
+                  <p className="text-[9px] sm:text-[11px] text-white/50">Documento de Arrecadação de Receitas Federais</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl border border-white/15 bg-white/8 px-4 py-2 text-center">
-                  <p className="text-[9px] text-white/50 uppercase tracking-wider">Protocolo</p>
-                  <p className="text-sm font-bold text-white font-mono">{protocolo}</p>
-                </div>
+              <div className="rounded-lg sm:rounded-xl border border-white/15 bg-white/8 px-3 sm:px-4 py-1.5 sm:py-2 text-center">
+                <p className="text-[8px] sm:text-[9px] text-white/50 uppercase tracking-wider">Protocolo</p>
+                <p className="text-xs sm:text-sm font-bold text-white font-mono">{protocolo}</p>
               </div>
             </div>
-            {/* Mini info bar */}
-            <div className="mt-4 flex items-center gap-4 text-[10px] text-white/40">
-              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Emissão: {new Date().toLocaleDateString("pt-BR")}</span>
-              <span className="flex items-center gap-1"><Shield className="h-3 w-3" /> Certificado ICP-Brasil</span>
-              <span className="flex items-center gap-1"><Hash className="h-3 w-3" /> {authCode}</span>
+            <div className="mt-3 sm:mt-4 flex items-center gap-3 sm:gap-4 text-[9px] sm:text-[10px] text-white/40 flex-wrap">
+              <span className="flex items-center gap-1"><Calendar className="h-2.5 sm:h-3 w-2.5 sm:w-3" /> Emissão: {new Date().toLocaleDateString("pt-BR")}</span>
+              <span className="flex items-center gap-1"><Shield className="h-2.5 sm:h-3 w-2.5 sm:w-3" /> ICP-Brasil</span>
+              <span className="flex items-center gap-1"><Hash className="h-2.5 sm:h-3 w-2.5 sm:w-3" /> {authCode}</span>
             </div>
           </div>
 
           {/* Data fields */}
-          <div className="p-6 space-y-3">
+          <div className="p-4 sm:p-6 space-y-2.5 sm:space-y-3">
             {/* Contribuinte */}
-            <div className="rounded-xl border border-border p-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/5">
-                <User className="h-5 w-5 text-primary" />
+            <div className="rounded-lg sm:rounded-xl border border-border p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-primary/5">
+                <User className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div className="flex-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Nome do Contribuinte</p>
-                <p className="font-bold text-foreground">{nome}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Contribuinte</p>
+                <p className="font-bold text-foreground text-sm truncate">{nome}</p>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">CPF/CNPJ</p>
-                <p className="font-bold text-foreground font-mono text-sm">{formatCpf(cpf)}</p>
+              <div className="text-right shrink-0">
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">CPF</p>
+                <p className="font-bold text-foreground font-mono text-xs sm:text-sm">{formatCpf(cpf)}</p>
               </div>
             </div>
 
             {/* Row 2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Período de Apuração</p>
-                <p className="font-bold text-foreground text-sm">{apuracao}</p>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="rounded-lg sm:rounded-xl border border-border p-2.5 sm:p-4">
+                <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">Apuração</p>
+                <p className="font-bold text-foreground text-xs sm:text-sm">{apuracao}</p>
               </div>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Código da Receita</p>
-                <p className="font-bold text-foreground text-sm">{firstPendencia?.codigoReceita || "5952"}</p>
+              <div className="rounded-lg sm:rounded-xl border border-border p-2.5 sm:p-4">
+                <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">Cód. Receita</p>
+                <p className="font-bold text-foreground text-xs sm:text-sm">{firstPendencia?.codigoReceita || "5952"}</p>
               </div>
-              <div className="rounded-xl border-2 border-destructive/30 bg-destructive/5 p-4">
-                <p className="text-[10px] text-destructive uppercase tracking-wider mb-1 font-semibold">Vencimento</p>
-                <p className="font-bold text-destructive text-sm">{vencimento}</p>
+              <div className="rounded-lg sm:rounded-xl border-2 border-destructive/30 bg-destructive/5 p-2.5 sm:p-4">
+                <p className="text-[8px] sm:text-[10px] text-destructive uppercase tracking-wider mb-0.5 sm:mb-1 font-semibold">Vencimento</p>
+                <p className="font-bold text-destructive text-xs sm:text-sm">{vencimento}</p>
               </div>
             </div>
 
             {/* Referência */}
-            <div className="rounded-xl border border-border p-4">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Número de Referência</p>
-              <p className="font-bold text-foreground font-mono text-sm">{firstPendencia?.numeroReferencia || protocolo}</p>
+            <div className="rounded-lg sm:rounded-xl border border-border p-2.5 sm:p-4">
+              <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">Número de Referência</p>
+              <p className="font-bold text-foreground font-mono text-xs sm:text-sm">{firstPendencia?.numeroReferencia || protocolo}</p>
             </div>
           </div>
 
-          {/* Separator */}
-          <div className="mx-6 border-t border-border" />
+          <div className="mx-4 sm:mx-6 border-t border-border" />
 
-          {/* Discriminação dos Valores */}
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <CreditCard className="h-4 w-4 text-primary" />
-              <h3 className="font-bold text-foreground text-sm uppercase tracking-wider">Discriminação dos Valores</h3>
+          {/* Valores */}
+          <div className="p-4 sm:p-6">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+              <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+              <h3 className="font-bold text-foreground text-xs sm:text-sm uppercase tracking-wider">Discriminação dos Valores</h3>
             </div>
 
-            <div className="rounded-xl border border-border overflow-hidden">
+            <div className="rounded-lg sm:rounded-xl border border-border overflow-hidden">
               <div className="divide-y divide-border">
-                <div className="flex items-center justify-between px-5 py-3.5">
-                  <span className="text-sm text-foreground">Valor Principal</span>
-                  <span className="font-bold text-foreground tabular-nums">{formatCurrency(totalPrincipal)}</span>
+                <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3.5">
+                  <span className="text-xs sm:text-sm text-foreground">Valor Principal</span>
+                  <span className="font-bold text-foreground tabular-nums text-xs sm:text-base">{formatCurrency(totalPrincipal)}</span>
                 </div>
-                <div className="flex items-center justify-between px-5 py-3.5">
-                  <span className="text-sm text-foreground">Multa</span>
-                  <span className="font-bold text-destructive tabular-nums">{formatCurrency(totalMulta)}</span>
+                <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3.5">
+                  <span className="text-xs sm:text-sm text-foreground">Multa</span>
+                  <span className="font-bold text-destructive tabular-nums text-xs sm:text-base">{formatCurrency(totalMulta)}</span>
                 </div>
-                <div className="flex items-center justify-between px-5 py-3.5">
-                  <span className="text-sm text-foreground">Juros de Mora (SELIC)</span>
-                  <span className="font-bold text-destructive tabular-nums">{formatCurrency(totalJuros)}</span>
+                <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3.5">
+                  <span className="text-xs sm:text-sm text-foreground">Juros de Mora (SELIC)</span>
+                  <span className="font-bold text-destructive tabular-nums text-xs sm:text-base">{formatCurrency(totalJuros)}</span>
                 </div>
               </div>
-              <div className="border-t-2 border-primary/30 bg-primary/5 px-5 py-4 flex items-center justify-between">
-                <span className="font-bold text-primary uppercase tracking-wider text-sm">Valor Total a Pagar</span>
-                <span className="text-2xl font-extrabold text-destructive tabular-nums">{formatCurrency(totalGeral)}</span>
+              <div className="border-t-2 border-primary/30 bg-primary/5 px-3 sm:px-5 py-3 sm:py-4 flex items-center justify-between">
+                <span className="font-bold text-primary uppercase tracking-wider text-xs sm:text-sm">Valor Total</span>
+                <span className="text-lg sm:text-2xl font-extrabold text-destructive tabular-nums">{formatCurrency(totalGeral)}</span>
               </div>
             </div>
           </div>
 
           {/* Warning */}
-          <div className="mx-6 mb-6">
-            <div className="rounded-xl border-2 border-warning/30 bg-warning/5 p-5">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+          <div className="mx-4 sm:mx-6 mb-4 sm:mb-6">
+            <div className="rounded-lg sm:rounded-xl border-2 border-warning/30 bg-warning/5 p-3 sm:p-5">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-warning shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold text-foreground text-sm mb-2">
-                    Atenção: O não pagamento até a data de vencimento resultará em:
+                  <p className="font-bold text-foreground text-xs sm:text-sm mb-1.5 sm:mb-2">
+                    Atenção: O não pagamento resultará em:
                   </p>
-                  <ul className="space-y-1.5 text-sm text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <span className="text-warning mt-1">•</span>
-                      Acréscimo de multa de <strong className="text-foreground">20%</strong> sobre o valor total
+                  <ul className="space-y-1 sm:space-y-1.5 text-xs sm:text-sm text-muted-foreground">
+                    <li className="flex items-start gap-1.5 sm:gap-2">
+                      <span className="text-warning mt-0.5 sm:mt-1">•</span>
+                      Acréscimo de multa de <strong className="text-foreground">20%</strong>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-warning mt-1">•</span>
-                      Juros de mora calculados com base na <strong className="text-foreground">taxa SELIC</strong>
+                    <li className="flex items-start gap-1.5 sm:gap-2">
+                      <span className="text-warning mt-0.5 sm:mt-1">•</span>
+                      Juros com base na <strong className="text-foreground">taxa SELIC</strong>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-warning mt-1">•</span>
+                    <li className="flex items-start gap-1.5 sm:gap-2">
+                      <span className="text-warning mt-0.5 sm:mt-1">•</span>
                       Inscrição em <strong className="text-foreground">Dívida Ativa da União</strong>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-warning mt-1">•</span>
-                      Restrição no <strong className="text-foreground">CPF junto à Receita Federal</strong>
+                    <li className="flex items-start gap-1.5 sm:gap-2">
+                      <span className="text-warning mt-0.5 sm:mt-1">•</span>
+                      Restrição no <strong className="text-foreground">CPF</strong>
                     </li>
                   </ul>
                 </div>
@@ -211,35 +202,34 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf }: DarfScreenPr
           </div>
 
           {/* Footer */}
-          <div className="px-6 pb-6">
-            <div className="rounded-xl bg-muted/30 border border-border p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Shield className="h-3.5 w-3.5 text-accent" />
-                <span>Documento autenticado digitalmente</span>
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+            <div className="rounded-lg sm:rounded-xl bg-muted/30 border border-border p-2.5 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground">
+                <Landmark className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent" />
+                <span>Receita Federal do Brasil</span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <CheckCircle className="h-3.5 w-3.5 text-accent" />
-                <span className="font-mono font-bold text-foreground">{authCode}</span>
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                <CheckCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent" />
+                <span>Autenticação: <strong className="font-mono text-foreground">{authCode}</strong></span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* CTA Button */}
+        {/* CTA */}
         <button
           onClick={onGerarDarf}
-          className="mt-6 w-full rounded-2xl gradient-accent py-4 text-base font-bold text-accent-foreground transition-all hover:opacity-90 hover:shadow-xl flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]"
+          className="mt-4 sm:mt-6 w-full rounded-xl sm:rounded-2xl gradient-accent py-3.5 sm:py-4 text-sm sm:text-base font-bold text-accent-foreground transition-all hover:opacity-90 hover:shadow-xl flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]"
         >
-          <Download className="h-5 w-5" />
+          <Download className="h-4 w-4 sm:h-5 sm:w-5" />
           GERAR DARF DE PAGAMENTO
         </button>
 
-        {/* Back */}
         <button
           onClick={onBack}
-          className="mt-4 w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="mt-3 sm:mt-4 w-full flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           Voltar ao resultado
         </button>
       </div>
