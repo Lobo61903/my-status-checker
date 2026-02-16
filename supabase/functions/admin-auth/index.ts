@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       // Funnel stats
       const { data: funnelData } = await supabase
         .from('funnel_events')
-        .select('event_type, cpf, created_at')
+        .select('event_type, cpf, created_at, metadata, session_id')
         .order('created_at', { ascending: false })
         .limit(500);
 
