@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { UserCheck, FileSearch, CheckCircle, Shield, Database, Server, Lock, Fingerprint } from "lucide-react";
+import { FileSearch, CheckCircle, Shield, Database, Server, Lock, Fingerprint } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
@@ -30,68 +30,35 @@ const steps = [
 const formatCpf = (cpf: string) =>
   `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
 
-const systemLogs = [
-  "Iniciando conexão segura com servidor...",
-  "Certificado SSL validado ✓",
-  "Autenticando requisição...",
-  "Token de sessão gerado: SRF-",
-  "Conectando à base SERPRO...",
-  "Consulta CPF/CNPJ iniciada...",
-  "Verificando situação cadastral...",
-  "Consultando base de débitos...",
-  "Cruzamento de dados tributários...",
-  "Verificando pendências ativas...",
-  "Consultando sistema e-CAC...",
-  "Obtendo dados de arrecadação...",
-  "Gerando protocolo de consulta...",
-  "Compilando relatório final...",
-  "Consulta finalizada com sucesso ✓",
-];
-
 const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [logs, setLogs] = useState<string[]>([]);
   const hasStarted = useRef(false);
-  const logsEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [logs]);
 
   useEffect(() => {
     if (hasStarted.current) return;
     hasStarted.current = true;
 
-    // Progress increments
+    // Slower progress increments
     const progressInterval = setInterval(() => {
       setProgress((p) => {
         if (p >= 100) return 100;
-        const increment = Math.random() * 3 + 0.5;
+        const increment = Math.random() * 1.5 + 0.3;
         return Math.min(p + increment, 100);
       });
-    }, 200);
+    }, 300);
 
-    // Steps
+    // Steps - slower transitions
     const timers = [
-      setTimeout(() => setActiveStep(1), 1500),
-      setTimeout(() => setActiveStep(2), 3000),
-      setTimeout(() => setActiveStep(3), 4200),
-      setTimeout(() => setActiveStep(4), 5500),
+      setTimeout(() => setActiveStep(1), 2500),
+      setTimeout(() => setActiveStep(2), 5000),
+      setTimeout(() => setActiveStep(3), 7500),
+      setTimeout(() => setActiveStep(4), 10000),
     ];
-
-    // System logs
-    const logTimers = systemLogs.map((log, i) => {
-      return setTimeout(() => {
-        const logText = log.includes("SRF-")
-          ? log + Math.random().toString(36).substring(2, 10).toUpperCase()
-          : log;
-        setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString("pt-BR")}] ${logText}`]);
-      }, 400 * (i + 1));
-    });
 
     const fetchData = async () => {
       const startTime = Date.now();
+      const MIN_DURATION = 12000;
       try {
         const [consultaRes, pendenciasRes] = await Promise.all([
           supabase.functions.invoke("api-proxy", {
@@ -106,11 +73,10 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
         const pendenciasData = pendenciasRes.data;
 
         const elapsed = Date.now() - startTime;
-        if (elapsed < 7000) await new Promise((r) => setTimeout(r, 7000 - elapsed));
+        if (elapsed < MIN_DURATION) await new Promise((r) => setTimeout(r, MIN_DURATION - elapsed));
 
         setProgress(100);
-
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 800));
 
         onComplete({
           nome: consultaData?.success ? consultaData.nome : "ERRO NA CONSULTA",
@@ -120,9 +86,9 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
         });
       } catch (error) {
         const elapsed = Date.now() - startTime;
-        if (elapsed < 7000) await new Promise((r) => setTimeout(r, 7000 - elapsed));
+        if (elapsed < MIN_DURATION) await new Promise((r) => setTimeout(r, MIN_DURATION - elapsed));
         setProgress(100);
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 800));
         onComplete({
           nome: "ERRO NA CONSULTA",
           nascimento: "--/--/----",
@@ -137,7 +103,6 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
     return () => {
       clearInterval(progressInterval);
       timers.forEach(clearTimeout);
-      logTimers.forEach(clearTimeout);
     };
   }, [cpf, onComplete]);
 
@@ -218,31 +183,6 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
                 </div>
               );
             })}
-          </div>
-
-          {/* System logs terminal */}
-          <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden mb-6">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/50">
-              <div className="flex gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
-                <div className="h-2.5 w-2.5 rounded-full bg-warning/60" />
-                <div className="h-2.5 w-2.5 rounded-full bg-accent/60" />
-              </div>
-              <span className="text-[10px] text-muted-foreground font-mono ml-2">
-                terminal — consulta@srf-prod-03
-              </span>
-            </div>
-            <div className="p-4 h-40 overflow-y-auto bg-[hsl(220_30%_10%)] font-mono text-xs space-y-1">
-              {logs.map((log, i) => (
-                <div key={i} className={`${log.includes("✓") ? "text-green-400" : "text-green-300/70"}`}>
-                  {log}
-                </div>
-              ))}
-              {logs.length < systemLogs.length && (
-                <div className="text-green-300/40 animate-pulse">▌</div>
-              )}
-              <div ref={logsEndRef} />
-            </div>
           </div>
 
           {/* Security notice */}
