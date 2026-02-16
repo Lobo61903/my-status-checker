@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { UserCheck, FileSearch, CheckCircle, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import GovHeader from "./GovHeader";
+import GovFooter from "./GovFooter";
 
 interface Pendencia {
   codigoReceita: string;
@@ -85,7 +86,7 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      <GovHeader />
+      <GovHeader cpf={cpf} />
       <div className="flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-2xl animate-fade-in-up">
           {/* Pulsing indicator */}
@@ -153,6 +154,7 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
           </div>
         </div>
       </div>
+      <GovFooter />
     </div>
   );
 };

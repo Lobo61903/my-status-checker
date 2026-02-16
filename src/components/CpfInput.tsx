@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search, Shield, FileText } from "lucide-react";
 import GovHeader from "./GovHeader";
+import GovFooter from "./GovFooter";
 
 interface CpfInputProps {
   onSubmit: (cpf: string) => void;
@@ -79,6 +80,7 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
           </div>
         </div>
       </div>
+      <GovFooter />
     </div>
   );
 };

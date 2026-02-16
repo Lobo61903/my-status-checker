@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import Testimonials from "./Testimonials";
 import GovHeader from "./GovHeader";
+import GovFooter from "./GovFooter";
 
 interface Pendencia {
   codigoReceita: string;
@@ -76,7 +77,7 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegul
 
   return (
     <div className="min-h-screen bg-background">
-      <GovHeader />
+      <GovHeader nome={nome} cpf={cpf} />
 
       {/* Status banner */}
       <div className="w-full bg-destructive py-3 text-center">
@@ -274,6 +275,7 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegul
           ← Nova consulta
         </button>
       </div>
+      <GovFooter />
     </div>
   );
 };

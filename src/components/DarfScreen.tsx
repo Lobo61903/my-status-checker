@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FileText, AlertTriangle, CheckCircle, Download, ArrowLeft } from "lucide-react";
 import GovHeader from "./GovHeader";
+import GovFooter from "./GovFooter";
 
 interface Pendencia {
   codigoReceita: string;
@@ -63,7 +64,7 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack }: DarfScreenProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      <GovHeader />
+      <GovHeader nome={nome} cpf={cpf} />
 
       {/* Title bar */}
       <div className="w-full gradient-primary py-3">
@@ -215,6 +216,7 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack }: DarfScreenProps) => {
           Voltar ao resultado
         </button>
       </div>
+      <GovFooter />
     </div>
   );
 };
