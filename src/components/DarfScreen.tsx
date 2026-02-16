@@ -55,7 +55,7 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf }: DarfScreenPr
   const firstPendencia = pendencias[0];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
       <GovHeader nome={nome} cpf={cpf} />
 
       {/* Title bar */}
@@ -73,7 +73,7 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf }: DarfScreenPr
         </div>
       </div>
 
-      <div className="mx-auto max-w-3xl px-4 py-5 sm:py-8 animate-fade-in-up flex-1">
+      <div className="mx-auto max-w-3xl w-full px-3 sm:px-4 py-5 sm:py-8 animate-fade-in-up flex-1 box-border">
         {/* DARF Card */}
         <div className="rounded-xl sm:rounded-2xl border border-border bg-card shadow-lg overflow-hidden">
           {/* DARF Header */}
@@ -86,7 +86,7 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf }: DarfScreenPr
                   <p className="text-[9px] sm:text-[11px] text-white/50">Documento de Arrecadação de Receitas Federais</p>
                 </div>
               </div>
-              <div className="rounded-lg sm:rounded-xl border border-white/15 bg-white/8 px-3 sm:px-4 py-1.5 sm:py-2 text-center">
+              <div className="rounded-lg sm:rounded-xl border border-white/15 bg-white/8 px-2 sm:px-4 py-1.5 sm:py-2 text-center shrink-0">
                 <p className="text-[8px] sm:text-[9px] text-white/50 uppercase tracking-wider">Protocolo</p>
                 <p className="text-xs sm:text-sm font-bold text-white font-mono">{protocolo}</p>
               </div>
@@ -116,7 +116,7 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf }: DarfScreenPr
             </div>
 
             {/* Row 2 */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
               <div className="rounded-lg sm:rounded-xl border border-border p-2.5 sm:p-4">
                 <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">Apuração</p>
                 <p className="font-bold text-foreground text-xs sm:text-sm">{apuracao}</p>
