@@ -40,7 +40,6 @@ const getApuracao = () => {
 
 const getVencimento = () => {
   const d = new Date();
-  d.setDate(d.getDate() + 15);
   return d.toLocaleDateString("pt-BR");
 };
 
