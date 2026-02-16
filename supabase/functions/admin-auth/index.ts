@@ -87,9 +87,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // VERIFY TOKEN (middleware)
-    const authHeader = req.headers.get('authorization') || body.token;
-    const token = authHeader?.replace('Bearer ', '') || '';
+    // VERIFY TOKEN (middleware) — use body.token (not the authorization header, which is the Supabase anon key)
+    const token = body.token || '';
     const claims = await verifyToken(token, tokenSecret);
     if (!claims) {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), {
