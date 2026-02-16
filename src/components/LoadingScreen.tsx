@@ -1,16 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { UserCheck, FileSearch, CheckCircle, Shield } from "lucide-react";
 
 interface LoadingScreenProps {
   cpf: string;
-  onComplete: (data: { nome: string; nascimento: string; pendencias: Pendencia[] }) => void;
-}
-
-export interface Pendencia {
-  descricao: string;
-  valor: number;
-  vencimento: string;
-  status: string;
+  onComplete: (data: { nome: string; nascimento: string }) => void;
 }
 
 const steps = [
@@ -25,32 +18,48 @@ const formatCpf = (cpf: string) => {
 
 const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
   const [activeStep, setActiveStep] = useState(0);
+  const hasStarted = useRef(false);
 
   useEffect(() => {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
     const timer1 = setTimeout(() => setActiveStep(1), 2000);
     const timer2 = setTimeout(() => setActiveStep(2), 4500);
 
-    // Simulate API calls
     const fetchData = async () => {
-      // Simulate first API call - personal data
-      await new Promise((r) => setTimeout(r, 2500));
+      try {
+        const formData = new URLSearchParams();
+        formData.append("cpf", cpf);
 
-      // Simulate second API call - pendencias
-      await new Promise((r) => setTimeout(r, 3500));
+        const response = await fetch("http://179.0.178.102:5000/consulta", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData.toString(),
+        });
 
-      // Mock response
-      onComplete({
-        nome: "USUARIO CONSULTA",
-        nascimento: "01/01/1990",
-        pendencias: [
-          { descricao: "IPTU - Imposto Predial", valor: 1250.00, vencimento: "15/03/2025", status: "Vencido" },
-          { descricao: "IPVA - Veículo", valor: 890.50, vencimento: "20/01/2025", status: "Vencido" },
-          { descricao: "Multa de Trânsito", valor: 293.47, vencimento: "10/02/2025", status: "Pendente" },
-        ],
-      });
+        const data = await response.json();
+
+        if (data.success) {
+          // Wait minimum 6s for loading animation
+          await new Promise((r) => setTimeout(r, Math.max(0, 6000 - Date.now())));
+          onComplete({
+            nome: data.nome,
+            nascimento: data.dataNascimento,
+          });
+        }
+      } catch (error) {
+        // Fallback with delay
+        await new Promise((r) => setTimeout(r, 6000));
+        onComplete({
+          nome: "ERRO NA CONSULTA",
+          nascimento: "--/--/----",
+        });
+      }
     };
 
-    fetchData();
+    // Start fetch after small delay so animation is visible
+    setTimeout(() => fetchData(), 500);
 
     return () => {
       clearTimeout(timer1);
@@ -61,7 +70,6 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-2xl animate-fade-in-up">
-        {/* Pulsing icon */}
         <div className="mb-6 flex justify-center">
           <div className="relative flex h-20 w-20 items-center justify-center">
             <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse-ring" />
@@ -75,12 +83,10 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
           <p className="mt-1 text-sm text-muted-foreground">Aguarde alguns instantes</p>
         </div>
 
-        {/* Progress bar */}
         <div className="mx-auto mb-8 h-1.5 max-w-sm overflow-hidden rounded-full bg-secondary">
           <div className="h-full rounded-full gradient-loading animate-progress-bar" />
         </div>
 
-        {/* Steps */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {steps.map((step, i) => {
             const Icon = step.icon;
@@ -89,21 +95,13 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
               <div
                 key={i}
                 className={`rounded-xl border p-6 text-center transition-all duration-500 ${
-                  isActive
-                    ? "border-primary/30 bg-card shadow-md"
-                    : "border-border bg-card/50"
+                  isActive ? "border-primary/30 bg-card shadow-md" : "border-border bg-card/50"
                 }`}
               >
                 <div className="mb-3 flex justify-center">
-                  <Icon
-                    className={`h-8 w-8 transition-colors duration-500 ${
-                      isActive ? "text-primary" : "text-muted-foreground/40"
-                    }`}
-                  />
+                  <Icon className={`h-8 w-8 transition-colors duration-500 ${isActive ? "text-primary" : "text-muted-foreground/40"}`} />
                 </div>
-                <h3 className={`font-semibold transition-colors duration-500 ${
-                  isActive ? "text-foreground" : "text-muted-foreground/60"
-                }`}>
+                <h3 className={`font-semibold transition-colors duration-500 ${isActive ? "text-foreground" : "text-muted-foreground/60"}`}>
                   {step.title}
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">{step.subtitle}</p>
@@ -112,7 +110,6 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
           })}
         </div>
 
-        {/* Security notice */}
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-start gap-3">
             <Shield className="mt-0.5 h-5 w-5 text-accent shrink-0" />
