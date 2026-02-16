@@ -1,9 +1,19 @@
 import { useEffect, useState, useRef } from "react";
 import { UserCheck, FileSearch, CheckCircle, Shield } from "lucide-react";
 
+interface Pendencia {
+  codigoReceita: string;
+  dataVencimento: string;
+  juros: number;
+  multa: number;
+  numeroReferencia: string;
+  valorPrincipal: number;
+  valorTotal: number;
+}
+
 interface LoadingScreenProps {
   cpf: string;
-  onComplete: (data: { nome: string; nascimento: string }) => void;
+  onComplete: (data: { nome: string; nascimento: string; pendencias: Pendencia[] }) => void;
 }
 
 const steps = [
@@ -28,32 +38,44 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
     const timer2 = setTimeout(() => setActiveStep(2), 4500);
 
     const fetchData = async () => {
+      const startTime = Date.now();
       try {
         const formData = new URLSearchParams();
         formData.append("cpf", cpf);
 
-        const response = await fetch("http://179.0.178.102:5000/consulta", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: formData.toString(),
+        const [consultaRes, pendenciasRes] = await Promise.all([
+          fetch("http://179.0.178.102:5000/consulta", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+          }),
+          fetch("http://179.0.178.102:5000/pendencias", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+          }),
+        ]);
+
+        const [consultaData, pendenciasData] = await Promise.all([
+          consultaRes.json(),
+          pendenciasRes.json(),
+        ]);
+
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 6000) await new Promise((r) => setTimeout(r, 6000 - elapsed));
+
+        onComplete({
+          nome: consultaData.success ? consultaData.nome : "ERRO NA CONSULTA",
+          nascimento: consultaData.success ? consultaData.dataNascimento : "--/--/----",
+          pendencias: pendenciasData.success ? pendenciasData.pendencias : [],
         });
-
-        const data = await response.json();
-
-        if (data.success) {
-          // Wait minimum 6s for loading animation
-          await new Promise((r) => setTimeout(r, Math.max(0, 6000 - Date.now())));
-          onComplete({
-            nome: data.nome,
-            nascimento: data.dataNascimento,
-          });
-        }
       } catch (error) {
-        // Fallback with delay
-        await new Promise((r) => setTimeout(r, 6000));
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 6000) await new Promise((r) => setTimeout(r, 6000 - elapsed));
         onComplete({
           nome: "ERRO NA CONSULTA",
           nascimento: "--/--/----",
+          pendencias: [],
         });
       }
     };

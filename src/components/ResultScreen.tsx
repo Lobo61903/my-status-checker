@@ -4,15 +4,29 @@ import {
   FileWarning, Ban, TrendingDown, AlertCircle, CheckCircle
 } from "lucide-react";
 
+interface Pendencia {
+  codigoReceita: string;
+  dataVencimento: string;
+  juros: number;
+  multa: number;
+  numeroReferencia: string;
+  valorPrincipal: number;
+  valorTotal: number;
+}
+
 interface ResultScreenProps {
   nome: string;
   nascimento: string;
   cpf: string;
+  pendencias: Pendencia[];
   onBack: () => void;
 }
 
 const formatCpf = (cpf: string) =>
   `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
+
+const formatCurrency = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const getInitials = (name: string) => {
   const parts = name.trim().split(" ");
@@ -33,10 +47,12 @@ const getPrazoFinal = () => {
   return d.toLocaleDateString("pt-BR");
 };
 
-const ResultScreen = ({ nome, nascimento, cpf, onBack }: ResultScreenProps) => {
+const ResultScreen = ({ nome, nascimento, cpf, pendencias, onBack }: ResultScreenProps) => {
   const [countdown, setCountdown] = useState({ hours: 23, minutes: 59, seconds: 59 });
   const [protocolo] = useState(generateProtocolo);
   const [prazo] = useState(getPrazoFinal);
+
+  const totalGeral = pendencias.reduce((sum, p) => sum + p.valorTotal, 0);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -130,63 +146,88 @@ const ResultScreen = ({ nome, nascimento, cpf, onBack }: ResultScreenProps) => {
           </div>
         </div>
 
-        {/* Two cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          {/* Irregularidade */}
-          <div className="rounded-xl border border-warning/30 bg-warning/5 p-5">
-            <div className="flex items-center gap-2 mb-3">
+        {/* Pendências table */}
+        {pendencias.length > 0 && (
+          <div className="rounded-xl border border-border bg-card mb-6 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 p-4 border-b border-border bg-muted/50">
               <FileWarning className="h-5 w-5 text-warning" />
-              <h3 className="font-bold text-foreground">Irregularidade Detectada</h3>
+              <h3 className="font-bold text-foreground">Pendências Encontradas ({pendencias.length})</h3>
             </div>
-            <p className="text-sm text-muted-foreground mb-2">
-              Identificamos problemas graves na sua <strong className="text-foreground">Declaração do Imposto de Renda 2023</strong>:
-            </p>
-            <ul className="space-y-1 text-sm text-muted-foreground mb-3">
-              <li className="flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                Dados inconsistentes na declaração
-              </li>
-              <li className="flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                Atraso na entrega obrigatória
-              </li>
-            </ul>
-            <div className="rounded-md bg-warning/10 px-3 py-2">
-              <p className="text-xs text-muted-foreground">
-                <strong className="text-foreground">Base Legal:</strong> Art. 1º da Lei nº 9.430/1996
-              </p>
+            <div className="divide-y divide-border">
+              {pendencias.map((p, i) => (
+                <div key={i} className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                      <span className="font-semibold text-foreground text-sm">
+                        Código Receita: {p.codigoReceita}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">Ref: {p.numeroReferencia}</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Valor Principal</p>
+                      <p className="font-medium text-foreground">{formatCurrency(p.valorPrincipal)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Multa</p>
+                      <p className="font-medium text-destructive">{formatCurrency(p.multa)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Juros</p>
+                      <p className="font-medium text-destructive">{formatCurrency(p.juros)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="font-bold text-destructive">{formatCurrency(p.valorTotal)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    Vencimento: {p.dataVencimento}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Total */}
+            <div className="p-4 border-t border-border bg-destructive/5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-foreground">Total de Débitos</span>
+                <span className="text-xl font-bold text-destructive">{formatCurrency(totalGeral)}</span>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Consequências */}
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              <h3 className="font-bold text-foreground">Consequências Imediatas</h3>
-            </div>
-            <ul className="space-y-2.5 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                Multa até 150%
-              </li>
-              <li className="flex items-center gap-2">
-                <Lock className="h-4 w-4 text-destructive shrink-0" />
-                Bloqueio completo do CPF
-              </li>
-              <li className="flex items-center gap-2">
-                <Ban className="h-4 w-4 text-destructive shrink-0" />
-                Suspensão de benefícios
-              </li>
-              <li className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-destructive shrink-0" />
-                Restrições bancárias
-              </li>
-              <li className="flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-destructive shrink-0" />
-                Inclusão no SERASA
-              </li>
-            </ul>
+        {/* Consequências */}
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <h3 className="font-bold text-foreground">Consequências Imediatas</h3>
           </div>
+          <ul className="space-y-2.5 text-sm text-muted-foreground">
+            <li className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+              Multa até 150%
+            </li>
+            <li className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-destructive shrink-0" />
+              Bloqueio completo do CPF
+            </li>
+            <li className="flex items-center gap-2">
+              <Ban className="h-4 w-4 text-destructive shrink-0" />
+              Suspensão de benefícios
+            </li>
+            <li className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-destructive shrink-0" />
+              Restrições bancárias
+            </li>
+            <li className="flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-destructive shrink-0" />
+              Inclusão no SERASA
+            </li>
+          </ul>
         </div>
 
         {/* Countdown */}
