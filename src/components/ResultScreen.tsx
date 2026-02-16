@@ -23,6 +23,7 @@ interface ResultScreenProps {
   cpf: string;
   pendencias: Pendencia[];
   onBack: () => void;
+  onRegularizar: () => void;
 }
 
 const formatCpf = (cpf: string) =>
@@ -50,7 +51,7 @@ const getPrazoFinal = () => {
   return d.toLocaleDateString("pt-BR");
 };
 
-const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack }: ResultScreenProps) => {
+const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegularizar }: ResultScreenProps) => {
   const [countdown, setCountdown] = useState({ hours: 23, minutes: 59, seconds: 59 });
   const [protocolo] = useState(generateProtocolo);
   const [prazo] = useState(getPrazoFinal);
@@ -259,7 +260,7 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack }: Resul
         </div>
 
         {/* CTA button */}
-        <button className="w-full rounded-2xl gradient-accent py-4 text-base font-bold text-accent-foreground transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-lg">
+        <button onClick={onRegularizar} className="w-full rounded-2xl gradient-accent py-4 text-base font-bold text-accent-foreground transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-lg">
           <CheckCircle className="h-5 w-5" />
           REGULARIZAR AGORA
           <ExternalLink className="h-4 w-4 ml-1" />
