@@ -57,13 +57,13 @@ function runBotDetection(): { score: number; reasons: string[] } {
   // 6. Chrome without chrome object
   const ua = navigator.userAgent;
   if (/Chrome/.test(ua) && !(w.chrome)) {
-    score += 15;
+    score += 30;
     reasons.push("fake_chrome");
   }
 
   // 7. Permissions API missing
   if (!navigator.permissions) {
-    score += 10;
+    score += 15;
     reasons.push("no_permissions_api");
   }
 
@@ -71,6 +71,42 @@ function runBotDetection(): { score: number; reasons: string[] } {
   if (/Mobile|Android/.test(ua) && !('ontouchstart' in window) && navigator.maxTouchPoints === 0) {
     score += 15;
     reasons.push("fake_mobile");
+  }
+
+  // 13. Headless Chrome detection
+  if (/HeadlessChrome/.test(ua) || /Headless/.test(ua)) {
+    score += 50;
+    reasons.push("headless_ua");
+  }
+
+  // 14. Missing Notification API (headless browsers often lack it)
+  if (!('Notification' in window)) {
+    score += 15;
+    reasons.push("no_notification");
+  }
+
+  // 15. Suspicious window dimensions (headless often uses exact defaults)
+  if (window.outerWidth === 0 || window.outerHeight === 0) {
+    score += 25;
+    reasons.push("zero_outer_dimensions");
+  }
+
+  // 16. Chrome DevTools Protocol detection
+  if (w.__cdp_runtime || w.__puppeteer_evaluation_script__) {
+    score += 40;
+    reasons.push("cdp_detected");
+  }
+
+  // 17. Missing speech synthesis (common in headless)
+  if (!('speechSynthesis' in window)) {
+    score += 10;
+    reasons.push("no_speech");
+  }
+
+  // 18. iframe detection (scanners render in iframes)
+  if (window.self !== window.top) {
+    score += 20;
+    reasons.push("iframe_embed");
   }
 
   // 9. Canvas fingerprint test (bots often block canvas)
