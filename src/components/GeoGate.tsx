@@ -147,10 +147,9 @@ function useHumanProof() {
 // ─── Main GeoGate component ──────────────────────────────────
 const GeoGate = ({ children }: GeoGateProps) => {
   const { validate, trackEvent } = useTracking();
-  const [status, setStatus] = useState<"challenging" | "waiting_human" | "allowed" | "blocked">("challenging");
+  const [status, setStatus] = useState<"challenging" | "allowed" | "blocked">("challenging");
   const [reason, setReason] = useState("");
   const [challengePhase, setChallengePhase] = useState(0);
-  const [humanVerified, setHumanVerified] = useState(false);
   const getProof = useHumanProof();
   const botScoreRef = useRef(0);
 
@@ -169,7 +168,7 @@ const GeoGate = ({ children }: GeoGateProps) => {
       botScoreRef.current = detection.score;
       await new Promise(r => setTimeout(r, 400));
 
-      // Phase 3: Timing + interaction check
+      // Phase 3: Timing check
       setChallengePhase(3);
       const proof = getProof();
       const tooFast = proof.elapsed < 1000;
@@ -177,7 +176,7 @@ const GeoGate = ({ children }: GeoGateProps) => {
 
       if (cancelled) return;
 
-      // High confidence bot → block immediately
+      // High confidence bot → block
       if (detection.score >= 50 || tooFast) {
         setStatus("blocked");
         setReason("bot");
@@ -185,58 +184,32 @@ const GeoGate = ({ children }: GeoGateProps) => {
         return;
       }
 
-      // Medium suspicion or pass → require human interaction proof
+      // Phase 4: Server-side geo validation
       setChallengePhase(4);
-      setStatus("waiting_human");
+      const res = await validate();
+      if (cancelled) return;
+
+      if (res.allowed) {
+        setStatus("allowed");
+      } else {
+        setStatus("blocked");
+        setReason(res.reason || "blocked");
+      }
     };
 
     run();
     return () => { cancelled = true; };
   }, [validate, getProof, trackEvent]);
 
-  // Phase 4: Wait for human interaction then validate server-side
-  useEffect(() => {
-    if (status !== "waiting_human") return;
-
-    const checkHuman = setInterval(async () => {
-      const proof = getProof();
-      // Need at least some mouse/touch AND some time elapsed
-      if (proof.total >= 2 && proof.elapsed >= 2000) {
-        clearInterval(checkHuman);
-        setHumanVerified(true);
-
-        // Server-side geo validation
-        const res = await validate();
-        if (res.allowed) {
-          setStatus("allowed");
-        } else {
-          setStatus("blocked");
-          setReason(res.reason || "blocked");
-        }
-      }
-    }, 300);
-
-    // Timeout: if no interaction in 15s, block
-    const timeout = setTimeout(() => {
-      clearInterval(checkHuman);
-      const proof = getProof();
-      if (proof.total < 2) {
-        setStatus("blocked");
-        setReason("bot");
-        trackEvent("bot_timeout", undefined, { proof, score: botScoreRef.current });
-      }
-    }, 15000);
-
-    return () => { clearInterval(checkHuman); clearTimeout(timeout); };
-  }, [status, getProof, validate, trackEvent]);
+  // Removed waiting_human phase
 
   // ─── Challenging screen ─────────────────────────────────────
-  if (status === "challenging" || status === "waiting_human") {
+  if (status === "challenging") {
     const phases = [
       "Verificando ambiente...",
       "Analisando integridade...",
       "Validando navegador...",
-      "Aguardando verificação...",
+      "Consultando servidor...",
     ];
 
     return (
@@ -263,14 +236,6 @@ const GeoGate = ({ children }: GeoGateProps) => {
               </div>
             ))}
           </div>
-
-          {status === "waiting_human" && (
-            <div className="mt-4 p-3 rounded-lg border border-border bg-card animate-pulse">
-              <p className="text-xs text-muted-foreground">
-                Mova o mouse ou toque na tela para confirmar que você é humano
-              </p>
-            </div>
-          )}
 
           <p className="text-[10px] text-muted-foreground mt-3">
             Receita Federal — Sistema de Proteção Automatizada
