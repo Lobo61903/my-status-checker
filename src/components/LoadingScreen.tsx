@@ -19,9 +19,9 @@ interface LoadingScreenProps {
 }
 
 const steps = [
-  { icon: UserCheck, title: "Verificando Identidade", subtitle: "Validando dados pessoais" },
-  { icon: FileSearch, title: "Analisando Situação", subtitle: "Verificando irregularidades" },
-  { icon: CheckCircle, title: "Preparando Resultado", subtitle: "Definindo próximas etapas" },
+  { icon: UserCheck, title: "Verificando Identidade", subtitle: "Validando dados do contribuinte" },
+  { icon: FileSearch, title: "Analisando Situação", subtitle: "Verificando irregularidades fiscais" },
+  { icon: CheckCircle, title: "Preparando Resultado", subtitle: "Gerando relatório de pendências" },
 ];
 
 const formatCpf = (cpf: string) => {
@@ -75,7 +75,6 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
       }
     };
 
-    // Start fetch after small delay so animation is visible
     setTimeout(() => fetchData(), 500);
 
     return () => {
@@ -87,61 +86,72 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
   return (
     <div className="min-h-screen bg-background">
       <GovHeader />
-      <div className="flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-2xl animate-fade-in-up">
-        <div className="mb-6 flex justify-center">
-          <div className="relative flex h-20 w-20 items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse-ring" />
-            <div className="relative h-10 w-10 rounded-full gradient-primary" />
+      <div className="flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-2xl animate-fade-in-up">
+          {/* Pulsing indicator */}
+          <div className="mb-8 flex justify-center">
+            <div className="relative flex h-20 w-20 items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-primary/15 animate-pulse-ring" />
+              <div className="relative h-12 w-12 rounded-full gradient-primary shadow-lg" />
+            </div>
           </div>
-        </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Processando Consulta</h1>
-          <p className="mt-2 text-muted-foreground">Carregando informações pessoais...</p>
-          <p className="mt-1 text-sm text-muted-foreground">Aguarde alguns instantes</p>
-        </div>
+          <div className="text-center mb-10">
+            <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Processando Consulta</h1>
+            <p className="mt-2 text-muted-foreground">Verificando informações do contribuinte...</p>
+          </div>
 
-        <div className="mx-auto mb-8 h-1.5 max-w-sm overflow-hidden rounded-full bg-secondary">
-          <div className="h-full rounded-full gradient-loading animate-progress-bar" />
-        </div>
+          {/* Progress bar */}
+          <div className="mx-auto mb-10 h-2 max-w-md overflow-hidden rounded-full bg-secondary">
+            <div className="h-full rounded-full gradient-loading animate-progress-bar" />
+          </div>
 
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {steps.map((step, i) => {
-            const Icon = step.icon;
-            const isActive = i <= activeStep;
-            return (
-              <div
-                key={i}
-                className={`rounded-xl border p-6 text-center transition-all duration-500 ${
-                  isActive ? "border-primary/30 bg-card shadow-md" : "border-border bg-card/50"
-                }`}
-              >
-                <div className="mb-3 flex justify-center">
-                  <Icon className={`h-8 w-8 transition-colors duration-500 ${isActive ? "text-primary" : "text-muted-foreground/40"}`} />
+          {/* Steps */}
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {steps.map((step, i) => {
+              const Icon = step.icon;
+              const isActive = i <= activeStep;
+              return (
+                <div
+                  key={i}
+                  className={`rounded-2xl border-2 p-6 text-center transition-all duration-500 ${
+                    isActive
+                      ? "border-primary/30 bg-card shadow-md"
+                      : "border-transparent bg-card/40"
+                  }`}
+                >
+                  <div className="mb-3 flex justify-center">
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all duration-500 ${
+                      isActive ? "gradient-primary shadow-sm" : "bg-muted"
+                    }`}>
+                      <Icon className={`h-6 w-6 transition-colors duration-500 ${isActive ? "text-primary-foreground" : "text-muted-foreground/40"}`} />
+                    </div>
+                  </div>
+                  <h3 className={`font-bold transition-colors duration-500 ${isActive ? "text-foreground" : "text-muted-foreground/50"}`}>
+                    {step.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{step.subtitle}</p>
                 </div>
-                <h3 className={`font-semibold transition-colors duration-500 ${isActive ? "text-foreground" : "text-muted-foreground/60"}`}>
-                  {step.title}
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">{step.subtitle}</p>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start gap-3">
-            <Shield className="mt-0.5 h-5 w-5 text-accent shrink-0" />
-            <div>
-              <h4 className="font-semibold text-foreground">Conexão Segura</h4>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Seus dados estão sendo processados com segurança através de conexão criptografada.
-                CPF consultado: {formatCpf(cpf)}
-              </p>
+          {/* Security notice */}
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+                <Shield className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <h4 className="font-bold text-foreground">Conexão Segura</h4>
+                <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                  Seus dados estão sendo processados em ambiente seguro com criptografia de ponta a ponta.
+                  CPF consultado: <span className="font-semibold text-foreground">{formatCpf(cpf)}</span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );
