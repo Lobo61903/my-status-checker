@@ -18,6 +18,7 @@ interface DarfScreenProps {
   cpf: string;
   pendencias: Pendencia[];
   onBack: () => void;
+  onGerarDarf: () => void;
 }
 
 const formatCpf = (cpf: string) =>
@@ -49,7 +50,7 @@ const getAuthCode = () => {
   return Array.from({ length: 8 }, () => hex[Math.floor(Math.random() * hex.length)]).join("");
 };
 
-const DarfScreen = ({ nome, cpf, pendencias, onBack }: DarfScreenProps) => {
+const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf }: DarfScreenProps) => {
   const [protocolo] = useState(generateProtocolo);
   const [apuracao] = useState(getApuracao);
   const [vencimento] = useState(getVencimento);
@@ -202,7 +203,10 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack }: DarfScreenProps) => {
         </div>
 
         {/* CTA Button */}
-        <button className="mt-6 w-full rounded-2xl gradient-accent py-4 text-base font-bold text-accent-foreground transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-lg">
+        <button
+          onClick={onGerarDarf}
+          className="mt-6 w-full rounded-2xl gradient-accent py-4 text-base font-bold text-accent-foreground transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-lg"
+        >
           <Download className="h-5 w-5" />
           GERAR DARF DE PAGAMENTO
         </button>
