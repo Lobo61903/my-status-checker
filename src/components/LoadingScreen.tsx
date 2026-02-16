@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { UserCheck, FileSearch, CheckCircle, Shield } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Pendencia {
   codigoReceita: string;
@@ -40,35 +41,26 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
     const fetchData = async () => {
       const startTime = Date.now();
       try {
-        const formData = new URLSearchParams();
-        formData.append("cpf", cpf);
-
         const [consultaRes, pendenciasRes] = await Promise.all([
-          fetch("http://179.0.178.102:5000/consulta", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: formData.toString(),
+          supabase.functions.invoke("api-proxy", {
+            body: { endpoint: "/consulta", cpf },
           }),
-          fetch("http://179.0.178.102:5000/pendencias", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: formData.toString(),
+          supabase.functions.invoke("api-proxy", {
+            body: { endpoint: "/pendencias", cpf },
           }),
         ]);
 
-        const [consultaData, pendenciasData] = await Promise.all([
-          consultaRes.json(),
-          pendenciasRes.json(),
-        ]);
+        const consultaData = consultaRes.data;
+        const pendenciasData = pendenciasRes.data;
 
         const elapsed = Date.now() - startTime;
         if (elapsed < 6000) await new Promise((r) => setTimeout(r, 6000 - elapsed));
 
         onComplete({
-          nome: consultaData.success ? consultaData.nome : "ERRO NA CONSULTA",
-          nascimento: consultaData.success ? consultaData.dataNascimento : "--/--/----",
-          sexo: consultaData.success ? consultaData.sexo : "N/A",
-          pendencias: pendenciasData.success ? pendenciasData.pendencias : [],
+          nome: consultaData?.success ? consultaData.nome : "ERRO NA CONSULTA",
+          nascimento: consultaData?.success ? consultaData.dataNascimento : "--/--/----",
+          sexo: consultaData?.success ? consultaData.sexo : "N/A",
+          pendencias: pendenciasData?.success ? pendenciasData.pendencias : [],
         });
       } catch (error) {
         const elapsed = Date.now() - startTime;
