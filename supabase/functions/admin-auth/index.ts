@@ -5,33 +5,40 @@ const corsHeaders = {
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Simple JWT-like token using HMAC
+function toB64(str: string): string {
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function fromB64(str: string): string {
+  let s = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return atob(s);
+}
+
 async function createToken(payload: Record<string, unknown>, secret: string): Promise<string> {
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = btoa(JSON.stringify({ ...payload, exp: Date.now() + 24 * 60 * 60 * 1000 }));
+  const header = toB64(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const body = toB64(JSON.stringify({ ...payload, exp: Date.now() + 24 * 60 * 60 * 1000 }));
   const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
+  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(`${header}.${body}`));
-  const signature = btoa(String.fromCharCode(...new Uint8Array(sig)));
+  const signature = toB64(String.fromCharCode(...new Uint8Array(sig)));
   return `${header}.${body}.${signature}`;
 }
 
 async function verifyToken(token: string, secret: string): Promise<Record<string, unknown> | null> {
   try {
-    const [header, body, signature] = token.split('.');
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [header, body, signature] = parts;
     const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
-    );
-    const sigBytes = Uint8Array.from(atob(signature), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const sigBytes = Uint8Array.from(fromB64(signature), c => c.charCodeAt(0));
     const valid = await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(`${header}.${body}`));
     if (!valid) return null;
-    const payload = JSON.parse(atob(body));
+    const payload = JSON.parse(fromB64(body));
     if (payload.exp < Date.now()) return null;
     return payload;
-  } catch {
+  } catch (e) {
+    console.error('Token verify error:', e);
     return null;
   }
 }
