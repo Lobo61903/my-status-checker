@@ -14,7 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      blocked_ips: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      funnel_events: {
+        Row: {
+          cpf: string | null
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          session_id: string
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          session_id: string
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          session_id?: string
+        }
+        Relationships: []
+      }
+      visits: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          country_name: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          is_bot: boolean | null
+          is_mobile: boolean | null
+          latitude: number | null
+          longitude: number | null
+          referrer: string | null
+          region: string | null
+          session_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          country_name?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_bot?: boolean | null
+          is_mobile?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          referrer?: string | null
+          region?: string | null
+          session_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          country_name?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_bot?: boolean | null
+          is_mobile?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          referrer?: string | null
+          region?: string | null
+          session_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

