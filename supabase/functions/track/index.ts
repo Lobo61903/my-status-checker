@@ -5,7 +5,7 @@ const corsHeaders = {
 
 const ALLOWED_COUNTRIES = ['BR', 'PT'];
 
-// Simple bot detection via User-Agent
+// Comprehensive bot/scanner UA patterns
 const BOT_PATTERNS = [
   /bot/i, /crawl/i, /spider/i, /slurp/i, /mediapartners/i,
   /facebookexternalhit/i, /linkedinbot/i, /twitterbot/i,
@@ -21,38 +21,96 @@ const BOT_PATTERNS = [
   /node-fetch/i, /axios/i, /got\//i, /undici/i, /fetch\//i,
   /Go-http-client/i, /Java\//i, /okhttp/i, /Apache-HttpClient/i,
   /CloudFlare/i, /Cloudinary/i, /APIs-Google/i,
+  /PhishTank/i, /SafeBrowsing/i, /GoogleSafeBrowsing/i,
+  /VirusTotal/i, /Sucuri/i, /SiteCheck/i, /Netcraft/i,
+  /OpenPhish/i, /ESET/i, /Kaspersky/i, /Norton/i, /McAfee/i,
+  /Avast/i, /Avira/i, /Bitdefender/i, /Symantec/i,
+  /Sophos/i, /TrendMicro/i, /Comodo/i, /DrWeb/i,
+  /ClamAV/i, /MalwareBytes/i, /Quttera/i, /SiteLock/i,
+  /Censys/i, /Shodan/i, /ZoomEye/i, /BinaryEdge/i,
+  /Nmap/i, /Masscan/i, /Zgrab/i, /RiskIQ/i, /IPinfo/i,
 ];
 
-// Known scanner/datacenter IP ranges (partial)
+// Known scanner/datacenter/security vendor IP prefixes
 const SCANNER_IP_PREFIXES = [
-  '46.226.', // urlscan.io infrastructure
-  '2a09:',   // urlscan.io IPv6
-  '64.62.',  // urlscan.io
-  '185.70.', // various scanners
+  '46.226.',    // urlscan.io
+  '2a09:',      // urlscan.io IPv6
+  '64.62.',     // urlscan.io
+  '185.70.',    // various scanners
+  '34.', '35.', // Google Cloud (SafeBrowsing crawlers)
+  '66.249.',    // Googlebot
+  '66.102.',    // Google
+  '72.14.',     // Google  
+  '209.85.',    // Google
+  '216.239.',   // Google
+  '64.233.',    // Google
+  '74.125.',    // Google
+  '142.250.',   // Google
+  '172.217.',   // Google
+  '173.194.',   // Google
+  '108.177.',   // Google
+  '52.',        // AWS (common scanner hosting)
+  '54.',        // AWS
+  '18.',        // AWS
+  '13.',        // AWS
+  '3.',         // AWS
+  '104.16.',    // Cloudflare
+  '104.17.',    // Cloudflare
+  '104.18.',    // Cloudflare
+  '104.19.',    // Cloudflare
+  '104.20.',    // Cloudflare
+  '104.21.',    // Cloudflare
+  '104.22.',    // Cloudflare
+  '104.23.',    // Cloudflare
+  '104.24.',    // Cloudflare
+  '104.25.',    // Cloudflare
+  '104.26.',    // Cloudflare
+  '104.27.',    // Cloudflare
+  '162.158.',   // Cloudflare
+  '141.101.',   // Cloudflare
+  '190.93.',    // Cloudflare
+  '188.114.',   // Cloudflare
+  '197.234.',   // Cloudflare
+  '198.41.',    // Cloudflare
+  '199.27.',    // Cloudflare
+];
+
+// Known datacenter ASN hostnames (partial match)
+const DATACENTER_HOSTNAMES = [
+  'compute.amazonaws.com', 'googleusercontent.com', 'cloudfront.net',
+  'azure.com', 'digitalocean.com', 'linode.com', 'vultr.com',
+  'hetzner.com', 'ovh.net', 'scaleway.com',
 ];
 
 function isBot(ua: string, ip: string, req: Request): boolean {
-  if (!ua || ua.length < 10) return true;
+  // Empty or very short UA
+  if (!ua || ua.length < 20) return true;
+
+  // UA pattern match
   if (BOT_PATTERNS.some((p) => p.test(ua))) return true;
-  
-  // Check known scanner IPs
+
+  // Known scanner IPs
   if (SCANNER_IP_PREFIXES.some(prefix => ip.startsWith(prefix))) return true;
-  
-  // Check suspicious headers - scanners often have unusual accept headers
-  const accept = req.headers.get('accept') || '';
+
+  // Header analysis
   const acceptLang = req.headers.get('accept-language') || '';
-  
-  // No accept-language is very suspicious for a "real browser"
-  if (!acceptLang || acceptLang === '*') return true;
-  
-  // Check for headless indicators in headers
   const secChUa = req.headers.get('sec-ch-ua') || '';
+  const secFetchSite = req.headers.get('sec-fetch-site') || '';
+  const secFetchMode = req.headers.get('sec-fetch-mode') || '';
+
+  // No accept-language = not a real browser
+  if (!acceptLang || acceptLang === '*') return true;
+
+  // Headless indicators
   if (secChUa.includes('HeadlessChrome') || secChUa.includes('Headless')) return true;
-  
+
+  // Must contain pt or en for Brazil/Portugal users
+  const hasBrPtLang = /pt|br|en/i.test(acceptLang);
+  if (!hasBrPtLang) return true;
+
   return false;
 }
 
-// Get real client IP from headers
 function getClientIp(req: Request): string {
   return (
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -69,12 +127,14 @@ interface GeoData {
   city: string;
   latitude: number;
   longitude: number;
+  isp: string;
+  org: string;
+  hosting: boolean;
 }
 
 async function getGeoData(ip: string): Promise<GeoData | null> {
   try {
-    // Use ip-api.com (free, no key needed, 45 req/min)
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode,country,regionName,city,lat,lon`);
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode,country,regionName,city,lat,lon,isp,org,hosting`);
     const data = await res.json();
     if (data.status === 'success') {
       return {
@@ -84,6 +144,9 @@ async function getGeoData(ip: string): Promise<GeoData | null> {
         city: data.city,
         latitude: data.lat,
         longitude: data.lon,
+        isp: data.isp || '',
+        org: data.org || '',
+        hosting: data.hosting || false,
       };
     }
   } catch (e) {
@@ -111,7 +174,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Action: validate — check geo + bot + blocked IP
+    // Action: validate
     if (action === 'validate') {
       // Check blocked IPs
       const { data: blocked } = await supabase
@@ -128,6 +191,12 @@ Deno.serve(async (req) => {
       }
 
       if (bot) {
+        // Auto-block bot IPs
+        await supabase.from('blocked_ips').upsert(
+          { ip_address: ip, reason: `Bot UA: ${ua.substring(0, 100)}` },
+          { onConflict: 'ip_address' }
+        );
+
         return new Response(JSON.stringify({ allowed: false, reason: 'bot' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -136,15 +205,24 @@ Deno.serve(async (req) => {
 
       const geo = await getGeoData(ip);
 
-      // Allow if geo lookup fails (don't block real users on API failure)
-      // Block if country is known and not in allowed list
+      // Block datacenter/hosting IPs (scanners run from datacenters)
+      if (geo && geo.hosting) {
+        await supabase.from('blocked_ips').upsert(
+          { ip_address: ip, reason: `Hosting/DC: ${geo.isp} (${geo.org})` },
+          { onConflict: 'ip_address' }
+        );
+        return new Response(JSON.stringify({ allowed: false, reason: 'bot' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Block non-allowed countries
       if (geo && !ALLOWED_COUNTRIES.includes(geo.country_code)) {
-        // Auto-block this IP
         await supabase.from('blocked_ips').upsert(
           { ip_address: ip, reason: `Country: ${geo.country_code} (${geo.country_name})` },
           { onConflict: 'ip_address' }
         );
-
         return new Response(JSON.stringify({ allowed: false, reason: 'geo', country: geo.country_code }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -177,7 +255,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Action: event — track funnel event
+    // Action: event
     if (action === 'event') {
       if (!session_id || !event_type) {
         return new Response(JSON.stringify({ error: 'Missing session_id or event_type' }), {
