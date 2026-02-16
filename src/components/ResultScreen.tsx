@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   AlertTriangle, Calendar, User, Shield, Clock, Lock,
-  FileWarning, Ban, TrendingDown, AlertCircle, CheckCircle, ExternalLink
+  FileWarning, Ban, TrendingDown, AlertCircle, CheckCircle, ExternalLink, Globe, Info
 } from "lucide-react";
 import Testimonials from "./Testimonials";
 import GovHeader from "./GovHeader";
@@ -56,6 +56,7 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegul
   const [countdown, setCountdown] = useState({ hours: 23, minutes: 59, seconds: 59 });
   const [protocolo] = useState(generateProtocolo);
   const [prazo] = useState(getPrazoFinal);
+  const [consultaTime] = useState(() => new Date().toLocaleString("pt-BR"));
 
   const totalGeral = pendencias.reduce((sum, p) => sum + p.valorTotal, 0);
 
@@ -76,7 +77,7 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegul
   const pad = (n: number) => n.toString().padStart(2, "0");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <GovHeader nome={nome} cpf={cpf} />
 
       {/* Status banner */}
@@ -86,7 +87,21 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegul
         </p>
       </div>
 
-      <div className="mx-auto max-w-2xl px-4 py-8 animate-fade-in-up">
+      {/* Consultation info bar */}
+      <div className="w-full bg-primary/5 border-b border-border py-2">
+        <div className="mx-auto max-w-2xl px-4 flex items-center justify-between text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span>Consulta realizada em: {consultaTime}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Globe className="h-3 w-3" />
+            <span>Fonte: SERPRO/RFB</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 mx-auto max-w-2xl px-4 py-8 animate-fade-in-up w-full">
         {/* Avatar + Name */}
         <div className="flex flex-col items-center mb-6">
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl gradient-primary text-2xl font-bold text-primary-foreground shadow-lg mb-3">
