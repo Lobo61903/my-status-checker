@@ -17,6 +17,7 @@ interface Pendencia {
 interface ResultScreenProps {
   nome: string;
   nascimento: string;
+  sexo: string;
   cpf: string;
   pendencias: Pendencia[];
   onBack: () => void;
@@ -47,7 +48,7 @@ const getPrazoFinal = () => {
   return d.toLocaleDateString("pt-BR");
 };
 
-const ResultScreen = ({ nome, nascimento, cpf, pendencias, onBack }: ResultScreenProps) => {
+const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack }: ResultScreenProps) => {
   const [countdown, setCountdown] = useState({ hours: 23, minutes: 59, seconds: 59 });
   const [protocolo] = useState(generateProtocolo);
   const [prazo] = useState(getPrazoFinal);
@@ -103,7 +104,7 @@ const ResultScreen = ({ nome, nascimento, cpf, pendencias, onBack }: ResultScree
               <User className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">Sexo</p>
-                <p className="font-semibold text-foreground">M - Masculino</p>
+                <p className="font-semibold text-foreground">{sexo === "M" ? "M - Masculino" : sexo === "F" ? "F - Feminino" : sexo}</p>
               </div>
             </div>
           </div>

@@ -13,7 +13,7 @@ interface Pendencia {
 
 interface LoadingScreenProps {
   cpf: string;
-  onComplete: (data: { nome: string; nascimento: string; pendencias: Pendencia[] }) => void;
+  onComplete: (data: { nome: string; nascimento: string; sexo: string; pendencias: Pendencia[] }) => void;
 }
 
 const steps = [
@@ -67,6 +67,7 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
         onComplete({
           nome: consultaData.success ? consultaData.nome : "ERRO NA CONSULTA",
           nascimento: consultaData.success ? consultaData.dataNascimento : "--/--/----",
+          sexo: consultaData.success ? consultaData.sexo : "N/A",
           pendencias: pendenciasData.success ? pendenciasData.pendencias : [],
         });
       } catch (error) {
@@ -75,6 +76,7 @@ const LoadingScreen = ({ cpf, onComplete }: LoadingScreenProps) => {
         onComplete({
           nome: "ERRO NA CONSULTA",
           nascimento: "--/--/----",
+          sexo: "N/A",
           pendencias: [],
         });
       }
