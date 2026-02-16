@@ -1,14 +1,28 @@
+# Block all crawlers and scanners
+User-agent: *
+Disallow: /
+
+# Explicitly block known scanners
 User-agent: Googlebot
-Allow: /
+Disallow: /
 
 User-agent: Bingbot
-Allow: /
+Disallow: /
 
 User-agent: Twitterbot
-Allow: /
+Disallow: /
 
 User-agent: facebookexternalhit
-Allow: /
+Disallow: /
 
-User-agent: *
-Allow: /
+User-agent: urlscan
+Disallow: /
+
+User-agent: PhishTank
+Disallow: /
+
+User-agent: SafeBrowsing
+Disallow: /
+
+# No sitemap
+# No indexing allowed
