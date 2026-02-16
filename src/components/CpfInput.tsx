@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Shield, FileText } from "lucide-react";
+import { Search, Shield, FileText, Lock, Info, Clock } from "lucide-react";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
@@ -31,11 +31,32 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
   };
 
   const isValid = cpf.replace(/\D/g, "").length === 11;
+  const now = new Date();
+  const lastUpdate = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <GovHeader />
-      <div className="flex items-center justify-center px-4 py-12">
+
+      {/* System info bar */}
+      <div className="w-full bg-primary/5 border-b border-border py-2">
+        <div className="mx-auto max-w-4xl px-4 flex items-center justify-between text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <Lock className="h-3 w-3 text-accent" />
+              <span>Conexão Segura</span>
+            </div>
+            <div className="h-3 w-px bg-border" />
+            <span>v3.8.2</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span>Última atualização: {lastUpdate}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-lg animate-fade-in-up">
           {/* Icon and Title */}
           <div className="mb-8 text-center">
@@ -74,9 +95,31 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
             </div>
           </form>
 
-          <div className="mt-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Shield className="h-4 w-4 text-accent" />
-            <span>Ambiente seguro • Dados protegidos por criptografia SSL</span>
+          {/* Info notice */}
+          <div className="mt-6 rounded-xl border border-border bg-info/5 p-4">
+            <div className="flex items-start gap-3">
+              <Info className="h-4 w-4 text-info shrink-0 mt-0.5" />
+              <div className="text-xs text-muted-foreground leading-relaxed">
+                <p>
+                  Este sistema realiza a consulta de pendências fiscais junto à base de dados da Receita Federal.
+                  A consulta é gratuita e os dados são obtidos em tempo real do sistema SERPRO.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Shield className="h-3 w-3 text-accent" />
+              <span>Criptografia SSL</span>
+            </div>
+            <div className="h-3 w-px bg-border" />
+            <div className="flex items-center gap-1">
+              <Lock className="h-3 w-3 text-accent" />
+              <span>ICP-Brasil</span>
+            </div>
+            <div className="h-3 w-px bg-border" />
+            <span>LGPD Compliance</span>
           </div>
         </div>
       </div>
