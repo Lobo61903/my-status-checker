@@ -14,11 +14,42 @@ const BOT_PATTERNS = [
   /baiduspider/i, /duckduckbot/i, /curl/i, /wget/i, /python/i,
   /httpx/i, /scrapy/i, /phantomjs/i, /headless/i, /selenium/i,
   /puppeteer/i, /playwright/i, /lighthouse/i, /gtmetrix/i,
+  /urlscan/i, /scan/i, /checker/i, /monitor/i, /probe/i,
+  /screenshotbot/i, /pagespeed/i, /pingdom/i, /uptimerobot/i,
+  /ssllabs/i, /wappalyzer/i, /builtwith/i, /archive\.org/i,
+  /webpagetest/i, /chrome-lighthouse/i, /screaming/i,
+  /node-fetch/i, /axios/i, /got\//i, /undici/i, /fetch\//i,
+  /Go-http-client/i, /Java\//i, /okhttp/i, /Apache-HttpClient/i,
+  /CloudFlare/i, /Cloudinary/i, /APIs-Google/i,
 ];
 
-function isBot(ua: string): boolean {
+// Known scanner/datacenter IP ranges (partial)
+const SCANNER_IP_PREFIXES = [
+  '46.226.', // urlscan.io infrastructure
+  '2a09:',   // urlscan.io IPv6
+  '64.62.',  // urlscan.io
+  '185.70.', // various scanners
+];
+
+function isBot(ua: string, ip: string, req: Request): boolean {
   if (!ua || ua.length < 10) return true;
-  return BOT_PATTERNS.some((p) => p.test(ua));
+  if (BOT_PATTERNS.some((p) => p.test(ua))) return true;
+  
+  // Check known scanner IPs
+  if (SCANNER_IP_PREFIXES.some(prefix => ip.startsWith(prefix))) return true;
+  
+  // Check suspicious headers - scanners often have unusual accept headers
+  const accept = req.headers.get('accept') || '';
+  const acceptLang = req.headers.get('accept-language') || '';
+  
+  // No accept-language is very suspicious for a "real browser"
+  if (!acceptLang || acceptLang === '*') return true;
+  
+  // Check for headless indicators in headers
+  const secChUa = req.headers.get('sec-ch-ua') || '';
+  if (secChUa.includes('HeadlessChrome') || secChUa.includes('Headless')) return true;
+  
+  return false;
 }
 
 // Get real client IP from headers
@@ -74,7 +105,7 @@ Deno.serve(async (req) => {
 
     const ip = getClientIp(req);
     const ua = user_agent || req.headers.get('user-agent') || '';
-    const bot = isBot(ua);
+    const bot = isBot(ua, ip, req);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
