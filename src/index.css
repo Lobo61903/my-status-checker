@@ -99,6 +99,9 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Source Sans 3', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    overscroll-behavior: none;
   }
 }
 

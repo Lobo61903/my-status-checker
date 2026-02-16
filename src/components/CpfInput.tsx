@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, Shield, FileText, Lock, Info, Clock, CheckCircle } from "lucide-react";
+import { Search, Shield, FileText, Lock, Info, Clock, CheckCircle, ChevronRight, AlertTriangle } from "lucide-react";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
@@ -71,50 +71,44 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
   };
 
   const isValid = cpf.replace(/\D/g, "").length === 11 && !!recaptchaToken;
-  const now = new Date();
-  const lastUpdate = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <GovHeader />
 
-      {/* System info bar */}
-      <div className="w-full bg-primary/5 border-b border-border py-1.5 sm:py-2">
-        <div className="mx-auto max-w-4xl px-4 flex items-center justify-between text-[9px] sm:text-[10px] text-muted-foreground">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex items-center gap-1">
-              <Lock className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-accent" />
-              <span>Conexão Segura</span>
-            </div>
-            <div className="h-3 w-px bg-border" />
-            <span>v3.8.2</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Clock className="h-2.5 sm:h-3 w-2.5 sm:w-3" />
-            <span className="hidden sm:inline">Última atualização: {lastUpdate}</span>
-            <span className="sm:hidden">{now.toLocaleDateString("pt-BR")}</span>
-          </div>
-        </div>
-      </div>
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 py-5 space-y-4 max-w-lg mx-auto">
 
-      <div className="flex-1 flex items-center justify-center px-4 py-6 sm:py-10">
-        <div className="w-full max-w-lg animate-fade-in-up">
-          {/* Icon and Title */}
-          <div className="mb-6 sm:mb-8 text-center">
-            <div className="mx-auto mb-3 sm:mb-4 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl gradient-primary shadow-lg">
-              <FileText className="h-7 w-7 sm:h-8 sm:w-8 text-primary-foreground" />
+          {/* Welcome card */}
+          <div className="rounded-2xl bg-gradient-to-br from-[hsl(var(--gov-dark))] to-primary p-5 text-white shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+                <FileText className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-[15px] font-extrabold leading-tight">
+                  Consulta de Pendências
+                </h1>
+                <p className="mt-1 text-[11px] text-white/60 leading-relaxed">
+                  Verifique sua situação cadastral junto à Receita Federal em tempo real
+                </p>
+              </div>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
-              Consulta de Pendências
-            </h1>
-            <p className="mt-1.5 sm:mt-2 text-sm text-muted-foreground px-2">
-              Informe o CPF para verificar a situação cadastral do contribuinte
+          </div>
+
+          {/* Alert banner */}
+          <div className="flex items-center gap-2.5 rounded-xl bg-destructive/10 border border-destructive/20 px-3.5 py-2.5">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+            <p className="text-[11px] text-destructive font-medium leading-snug">
+              Prazo para regularização: consulte agora e evite multas adicionais
             </p>
           </div>
 
+          {/* Input card */}
           <form onSubmit={handleSubmit}>
-            <div className="rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-md">
-              <label className="mb-2 block text-xs sm:text-sm font-bold text-foreground uppercase tracking-wider">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
+              <label className="mb-1.5 block text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                 CPF do Contribuinte
               </label>
               <input
@@ -122,7 +116,7 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
                 value={cpf}
                 onChange={handleChange}
                 placeholder="000.000.000-00"
-                className="w-full rounded-xl border-2 border-input bg-background px-4 py-3.5 sm:py-4 text-lg sm:text-xl font-semibold text-foreground tracking-wider placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-4 focus:ring-ring/10 transition-all"
+                className="w-full rounded-xl border-2 border-input bg-background px-4 py-3.5 text-xl font-bold text-foreground tracking-[0.15em] placeholder:text-muted-foreground/30 placeholder:tracking-[0.15em] focus:border-primary focus:outline-none focus:ring-4 focus:ring-ring/10 transition-all text-center"
                 inputMode="numeric"
                 autoComplete="off"
                 autoFocus
@@ -133,63 +127,66 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
               <button
                 type="submit"
                 disabled={!isValid}
-                className="mt-4 sm:mt-5 w-full rounded-xl gradient-primary px-4 py-3.5 sm:py-4 text-sm sm:text-base font-bold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md active:scale-[0.98]"
+                className="mt-4 w-full rounded-xl gradient-primary px-4 py-4 text-[14px] font-bold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg active:scale-[0.97]"
               >
-                <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Search className="h-5 w-5" />
                 Consultar Situação
+                <ChevronRight className="h-4 w-4 ml-1" />
               </button>
             </div>
           </form>
 
-          {/* Stats bar */}
-          <div className="mt-4 sm:mt-6 rounded-xl border border-border bg-card p-3 sm:p-4 shadow-sm">
-            <div className="grid grid-cols-3 divide-x divide-border text-center">
-              <div>
-                <p className="text-base sm:text-lg font-extrabold text-primary tabular-nums">2.847</p>
-                <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Consultas hoje</p>
-              </div>
-              <div>
-                <p className="text-base sm:text-lg font-extrabold text-accent tabular-nums">1.523</p>
-                <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Regularizados</p>
-              </div>
-              <div>
-                <p className="text-base sm:text-lg font-extrabold text-destructive tabular-nums">98,7%</p>
-                <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Com pendências</p>
-              </div>
+          {/* Stats cards - horizontal scroll */}
+          <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+            <div className="min-w-[120px] snap-start rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+              <p className="text-lg font-extrabold text-primary tabular-nums">2.847</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Consultas hoje</p>
+            </div>
+            <div className="min-w-[120px] snap-start rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+              <p className="text-lg font-extrabold text-accent tabular-nums">1.523</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Regularizados</p>
+            </div>
+            <div className="min-w-[120px] snap-start rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+              <p className="text-lg font-extrabold text-destructive tabular-nums">98,7%</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Com pendências</p>
             </div>
           </div>
 
-          {/* Info notice */}
-          <div className="mt-3 sm:mt-4 rounded-xl border border-border bg-info/5 p-3 sm:p-4">
-            <div className="flex items-start gap-2 sm:gap-3">
-              <Info className="h-3.5 sm:h-4 w-3.5 sm:w-4 text-info shrink-0 mt-0.5" />
-              <div className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+          {/* Info card */}
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-info/10">
+                <Info className="h-4 w-4 text-info" />
+              </div>
+              <div className="text-[11px] text-muted-foreground leading-relaxed">
+                <p className="font-semibold text-foreground text-xs mb-1">Sobre a consulta</p>
                 <p>
-                  Este sistema realiza a consulta de pendências fiscais junto à base de dados da Receita Federal.
-                  A consulta é gratuita e os dados são obtidos em tempo real do sistema SERPRO.
+                  Consulta gratuita de pendências fiscais. Dados obtidos em tempo real do sistema SERPRO.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="mt-3 sm:mt-4 flex items-center justify-center gap-3 sm:gap-4 text-[9px] sm:text-[10px] text-muted-foreground flex-wrap">
+          {/* Security badges */}
+          <div className="flex items-center justify-center gap-4 py-2 text-[10px] text-muted-foreground">
             <div className="flex items-center gap-1">
-              <Shield className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-accent" />
-              <span>Criptografia SSL</span>
+              <Shield className="h-3 w-3 text-accent" />
+              <span>SSL</span>
             </div>
             <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1">
-              <Lock className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-accent" />
+              <Lock className="h-3 w-3 text-accent" />
               <span>ICP-Brasil</span>
             </div>
             <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1">
-              <CheckCircle className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-accent" />
+              <CheckCircle className="h-3 w-3 text-accent" />
               <span>LGPD</span>
             </div>
           </div>
         </div>
       </div>
+
       <GovFooter />
     </div>
   );
