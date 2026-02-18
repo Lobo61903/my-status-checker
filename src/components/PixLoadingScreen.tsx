@@ -8,7 +8,7 @@ interface PixLoadingScreenProps {
   cpf: string;
   nome: string;
   valor: number;
-  onComplete: (pixCopiaCola: string) => void;
+  onComplete: (pixCopiaCola: string, transactionId: string) => void;
   onError: () => void;
   onTabChange?: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
 }
@@ -62,7 +62,7 @@ const PixLoadingScreen = ({ cpf, nome, valor, onComplete, onError, onTabChange }
         await new Promise((r) => setTimeout(r, 800));
 
         if (res.data?.success && res.data?.pixCopiaCola) {
-          onComplete(res.data.pixCopiaCola);
+          onComplete(res.data.pixCopiaCola, res.data.transactionId || "");
         } else {
           onError();
         }

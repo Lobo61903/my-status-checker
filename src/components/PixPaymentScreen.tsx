@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Copy, CheckCircle, Clock, Shield, QrCode, ArrowLeft, AlertTriangle, Smartphone, Lock, Landmark } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
@@ -9,7 +10,9 @@ interface PixPaymentScreenProps {
   cpf: string;
   valor: number;
   pixCopiaCola: string;
+  transactionId: string;
   onBack: () => void;
+  onPaid: () => void;
   onTabChange?: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
 }
 
@@ -19,9 +22,10 @@ const formatCurrency = (value: number) =>
 const formatCpf = (cpf: string) =>
   `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
 
-const PixPaymentScreen = ({ nome, cpf, valor, pixCopiaCola, onBack, onTabChange }: PixPaymentScreenProps) => {
+const PixPaymentScreen = ({ nome, cpf, valor, pixCopiaCola, transactionId, onBack, onPaid, onTabChange }: PixPaymentScreenProps) => {
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30 * 60);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -29,6 +33,32 @@ const PixPaymentScreen = ({ nome, cpf, valor, pixCopiaCola, onBack, onTabChange 
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Poll payment status every 5 seconds
+  useEffect(() => {
+    if (!transactionId) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await supabase.functions.invoke("api-proxy", {
+          body: { endpoint: "/status-venda", transactionId },
+        });
+        if (res.data?.success && res.data?.status === "PAID") {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          onPaid();
+        }
+      } catch {
+        // silently retry
+      }
+    };
+
+    checkStatus();
+    pollingRef.current = setInterval(checkStatus, 5000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [transactionId, onPaid]);
 
   const handleCopy = async () => {
     try {
