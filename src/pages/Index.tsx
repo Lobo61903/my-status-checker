@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import CpfInput from "@/components/CpfInput";
 import LoadingScreen from "@/components/LoadingScreen";
 import ResultScreen from "@/components/ResultScreen";
@@ -36,9 +36,11 @@ interface ResultData {
 
 const Index = () => {
   const { cpf: cpfParam } = useParams<{ cpf?: string }>();
+  const location = useLocation();
+  const initialTab = (location.state as { tab?: Tab })?.tab || "inicio";
   const [showSplash, setShowSplash] = useState(() => !cpfParam && !sessionStorage.getItem("splash_shown"));
   const [screen, setScreen] = useState<Screen>(cpfParam ? "loading" : "input");
-  const [activeTab, setActiveTab] = useState<Tab>("inicio");
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [cpf, setCpf] = useState(cpfParam ? cpfParam.replace(/\D/g, "") : "");
   const [result, setResult] = useState<ResultData | null>(null);
   const [pixCopiaCola, setPixCopiaCola] = useState("");
@@ -60,6 +62,15 @@ const Index = () => {
       }
     }
   }, [cpfParam, trackEvent]);
+
+  // Sync tab from navigation state
+  useEffect(() => {
+    const navTab = (location.state as { tab?: Tab })?.tab;
+    if (navTab) {
+      setActiveTab(navTab);
+      if (navTab === "inicio") setScreen("input");
+    }
+  }, [location.state]);
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
