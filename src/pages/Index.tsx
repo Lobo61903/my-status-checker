@@ -9,9 +9,10 @@ import ConsultasTab from "@/components/ConsultasTab";
 import SegurancaTab from "@/components/SegurancaTab";
 import AjudaTab from "@/components/AjudaTab";
 import TabTransition from "@/components/TabTransition";
+import SplashScreen from "@/components/SplashScreen";
 import { useTracking } from "@/hooks/useTracking";
 
-type Screen = "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment";
+type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment";
 type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 const recaptchaTokenStore = { current: "" };
 
@@ -33,6 +34,7 @@ interface ResultData {
 }
 
 const Index = () => {
+  const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem("splash_shown"));
   const [screen, setScreen] = useState<Screen>("input");
   const [activeTab, setActiveTab] = useState<Tab>("inicio");
   const [cpf, setCpf] = useState("");
@@ -96,6 +98,17 @@ const Index = () => {
   }, []);
 
   // totalValor is computed above
+
+  if (showSplash) {
+    return (
+      <SplashScreen
+        onComplete={() => {
+          sessionStorage.setItem("splash_shown", "1");
+          setShowSplash(false);
+        }}
+      />
+    );
+  }
 
   if (screen === "loading") {
     return <LoadingScreen cpf={cpf} recaptchaToken={recaptchaTokenStore.current} onComplete={handleLoadingComplete} />;
