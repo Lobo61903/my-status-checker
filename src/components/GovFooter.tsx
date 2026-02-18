@@ -1,4 +1,5 @@
 import { Shield, Home, FileText, HelpCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 
@@ -8,12 +9,23 @@ interface GovFooterProps {
 }
 
 const GovFooter = ({ activeTab = "inicio", onTabChange }: GovFooterProps) => {
+  const navigate = useNavigate();
+
   const tabs: { id: Tab; icon: typeof Home; label: string }[] = [
     { id: "inicio", icon: Home, label: "Início" },
     { id: "consultas", icon: FileText, label: "Consultas" },
     { id: "seguranca", icon: Shield, label: "Segurança" },
     { id: "ajuda", icon: HelpCircle, label: "Ajuda" },
   ];
+
+  const handleTab = (tab: Tab) => {
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      // Navigate to home and let Index handle the tab
+      navigate("/", { state: { tab } });
+    }
+  };
 
   return (
     <footer className="sticky bottom-0 z-50 border-t border-border bg-card/95 backdrop-blur-lg safe-area-bottom">
@@ -24,7 +36,7 @@ const GovFooter = ({ activeTab = "inicio", onTabChange }: GovFooterProps) => {
             return (
               <button
                 key={id}
-                onClick={() => onTabChange?.(id)}
+                onClick={() => handleTab(id)}
                 className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all active:scale-95 ${
                   isActive ? "" : "opacity-50"
                 }`}
