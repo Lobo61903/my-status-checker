@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { endpoint, cpf, nome, valor, recaptchaToken } = body;
 
-    const allowedEndpoints = ['/consulta', '/pendencias', '/criar-venda'];
+    const allowedEndpoints = ['/consulta', '/pendencias', '/criar-venda', '/status-venda'];
     if (!endpoint || !allowedEndpoints.includes(endpoint)) {
       return new Response(JSON.stringify({ error: 'Invalid endpoint' }), {
         status: 400,
@@ -75,6 +75,18 @@ Deno.serve(async (req) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cpf, nome, valor }),
+      });
+    } else if (endpoint === '/status-venda') {
+      const { transactionId } = body;
+      if (!transactionId) {
+        return new Response(JSON.stringify({ error: 'Missing transactionId' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      response = await fetch(`${API_BASE}/status-venda/${transactionId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       });
     } else {
       const formData = new URLSearchParams();

@@ -6,6 +6,7 @@ import ResultScreen from "@/components/ResultScreen";
 import DarfScreen from "@/components/DarfScreen";
 import PixLoadingScreen from "@/components/PixLoadingScreen";
 import PixPaymentScreen from "@/components/PixPaymentScreen";
+import PaidScreen from "@/components/PaidScreen";
 import ConsultasTab from "@/components/ConsultasTab";
 import SegurancaTab from "@/components/SegurancaTab";
 import AjudaTab from "@/components/AjudaTab";
@@ -13,7 +14,7 @@ import TabTransition from "@/components/TabTransition";
 import SplashScreen from "@/components/SplashScreen";
 import { useTracking } from "@/hooks/useTracking";
 
-type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment";
+type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid";
 type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 const recaptchaTokenStore = { current: "" };
 
@@ -44,6 +45,7 @@ const Index = () => {
   const [cpf, setCpf] = useState(cpfParam ? cpfParam.replace(/\D/g, "") : "");
   const [result, setResult] = useState<ResultData | null>(null);
   const [pixCopiaCola, setPixCopiaCola] = useState("");
+  const [transactionId, setTransactionId] = useState("");
   const { trackEvent } = useTracking();
   const totalValor = result?.pendencias.reduce((s, p) => s + p.valorTotal, 0) ?? 0;
   const autoStarted = useRef(false);
@@ -114,11 +116,17 @@ const Index = () => {
     trackEvent("pix_generating", cpf);
   };
 
-  const handlePixComplete = useCallback((pix: string) => {
+  const handlePixComplete = useCallback((pix: string, txnId: string) => {
     setPixCopiaCola(pix);
+    setTransactionId(txnId);
     setScreen("pix-payment");
-    trackEvent("pix_generated", cpf, { pix_length: pix.length, valor: totalValor });
+    trackEvent("pix_generated", cpf, { pix_length: pix.length, valor: totalValor, transactionId: txnId });
   }, [totalValor, cpf, trackEvent]);
+
+  const handlePaid = useCallback(() => {
+    setScreen("paid");
+    trackEvent("payment_confirmed", cpf, { valor: totalValor, transactionId });
+  }, [cpf, totalValor, transactionId, trackEvent]);
 
   const handlePixError = useCallback(() => {
     setScreen("darf");
@@ -154,6 +162,19 @@ const Index = () => {
     );
   }
 
+  if (screen === "paid" && result) {
+    return (
+      <PaidScreen
+        nome={result.nome}
+        cpf={cpf}
+        valor={totalValor}
+        transactionId={transactionId}
+        onBack={handleBack}
+        onTabChange={handleTabChange}
+      />
+    );
+  }
+
   if (screen === "pix-payment" && result) {
     return (
       <PixPaymentScreen
@@ -161,7 +182,9 @@ const Index = () => {
         cpf={cpf}
         valor={totalValor}
         pixCopiaCola={pixCopiaCola}
+        transactionId={transactionId}
         onBack={handleBackToResult}
+        onPaid={handlePaid}
         onTabChange={handleTabChange}
       />
     );
