@@ -1,27 +1,54 @@
-import { Shield, Lock, Home, FileText, HelpCircle } from "lucide-react";
+import { Shield, Home, FileText, HelpCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
-const GovFooter = () => {
+type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
+
+interface GovFooterProps {
+  activeTab?: Tab;
+  onTabChange?: (tab: Tab) => void;
+}
+
+const GovFooter = ({ activeTab = "inicio", onTabChange }: GovFooterProps) => {
+  const handleTab = (tab: Tab) => {
+    if (tab === "inicio") {
+      onTabChange?.(tab);
+      return;
+    }
+    toast({
+      title: "Em breve",
+      description: `A seção "${tab === "consultas" ? "Consultas" : tab === "seguranca" ? "Segurança" : "Ajuda"}" estará disponível em uma atualização futura.`,
+    });
+  };
+
+  const tabs: { id: Tab; icon: typeof Home; label: string }[] = [
+    { id: "inicio", icon: Home, label: "Início" },
+    { id: "consultas", icon: FileText, label: "Consultas" },
+    { id: "seguranca", icon: Shield, label: "Segurança" },
+    { id: "ajuda", icon: HelpCircle, label: "Ajuda" },
+  ];
+
   return (
     <footer className="sticky bottom-0 z-50 border-t border-border bg-card/95 backdrop-blur-lg safe-area-bottom">
-      {/* App-style bottom navigation */}
       <div className="px-2 py-2 pb-3">
         <div className="flex items-center justify-around">
-          <button className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl">
-            <Home className="h-5 w-5 text-primary" />
-            <span className="text-[9px] font-semibold text-primary">Início</span>
-          </button>
-          <button className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl opacity-50">
-            <FileText className="h-5 w-5 text-muted-foreground" />
-            <span className="text-[9px] font-medium text-muted-foreground">Consultas</span>
-          </button>
-          <button className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl opacity-50">
-            <Shield className="h-5 w-5 text-muted-foreground" />
-            <span className="text-[9px] font-medium text-muted-foreground">Segurança</span>
-          </button>
-          <button className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl opacity-50">
-            <HelpCircle className="h-5 w-5 text-muted-foreground" />
-            <span className="text-[9px] font-medium text-muted-foreground">Ajuda</span>
-          </button>
+          {tabs.map(({ id, icon: Icon, label }) => {
+            const isActive = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => handleTab(id)}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all active:scale-95 ${
+                  isActive ? "" : "opacity-50"
+                }`}
+              >
+                <Icon className={`h-5 w-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                <span className={`text-[9px] ${isActive ? "font-semibold text-primary" : "font-medium text-muted-foreground"}`}>
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
       {/* Home indicator */}
