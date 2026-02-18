@@ -5,9 +5,13 @@ import ResultScreen from "@/components/ResultScreen";
 import DarfScreen from "@/components/DarfScreen";
 import PixLoadingScreen from "@/components/PixLoadingScreen";
 import PixPaymentScreen from "@/components/PixPaymentScreen";
+import ConsultasTab from "@/components/ConsultasTab";
+import SegurancaTab from "@/components/SegurancaTab";
+import AjudaTab from "@/components/AjudaTab";
 import { useTracking } from "@/hooks/useTracking";
 
 type Screen = "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment";
+type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 const recaptchaTokenStore = { current: "" };
 
 export interface Pendencia {
@@ -29,11 +33,19 @@ interface ResultData {
 
 const Index = () => {
   const [screen, setScreen] = useState<Screen>("input");
+  const [activeTab, setActiveTab] = useState<Tab>("inicio");
   const [cpf, setCpf] = useState("");
   const [result, setResult] = useState<ResultData | null>(null);
   const [pixCopiaCola, setPixCopiaCola] = useState("");
   const { trackEvent } = useTracking();
   const totalValor = result?.pendencias.reduce((s, p) => s + p.valorTotal, 0) ?? 0;
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    if (tab === "inicio") {
+      setScreen("input");
+    }
+  };
 
   useEffect(() => {
     trackEvent("page_view");
@@ -138,7 +150,11 @@ const Index = () => {
     );
   }
 
-  return <CpfInput onSubmit={handleCpfSubmit} />;
+  if (activeTab === "consultas") return <ConsultasTab onTabChange={handleTabChange} />;
+  if (activeTab === "seguranca") return <SegurancaTab onTabChange={handleTabChange} />;
+  if (activeTab === "ajuda") return <AjudaTab onTabChange={handleTabChange} />;
+
+  return <CpfInput onSubmit={handleCpfSubmit} onTabChange={handleTabChange} />;
 };
 
 export default Index;
