@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
 import CpfInput from "@/components/CpfInput";
 import LoadingScreen from "@/components/LoadingScreen";
 import ResultScreen from "@/components/ResultScreen";
@@ -34,14 +35,31 @@ interface ResultData {
 }
 
 const Index = () => {
-  const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem("splash_shown"));
-  const [screen, setScreen] = useState<Screen>("input");
+  const { cpf: cpfParam } = useParams<{ cpf?: string }>();
+  const [showSplash, setShowSplash] = useState(() => !cpfParam && !sessionStorage.getItem("splash_shown"));
+  const [screen, setScreen] = useState<Screen>(cpfParam ? "loading" : "input");
   const [activeTab, setActiveTab] = useState<Tab>("inicio");
-  const [cpf, setCpf] = useState("");
+  const [cpf, setCpf] = useState(cpfParam ? cpfParam.replace(/\D/g, "") : "");
   const [result, setResult] = useState<ResultData | null>(null);
   const [pixCopiaCola, setPixCopiaCola] = useState("");
   const { trackEvent } = useTracking();
   const totalValor = result?.pendencias.reduce((s, p) => s + p.valorTotal, 0) ?? 0;
+  const autoStarted = useRef(false);
+
+  // Auto-start consultation when CPF comes from URL
+  useEffect(() => {
+    if (cpfParam && !autoStarted.current) {
+      autoStarted.current = true;
+      const cleanCpf = cpfParam.replace(/\D/g, "");
+      if (cleanCpf.length === 11) {
+        setCpf(cleanCpf);
+        setScreen("loading");
+        trackEvent("cpf_submitted", cleanCpf, { source: "url" });
+      } else {
+        setScreen("input");
+      }
+    }
+  }, [cpfParam, trackEvent]);
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
