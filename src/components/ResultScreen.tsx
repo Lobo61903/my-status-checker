@@ -25,6 +25,7 @@ interface ResultScreenProps {
   pendencias: Pendencia[];
   onBack: () => void;
   onRegularizar: () => void;
+  onTabChange?: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
 }
 
 const formatCpf = (cpf: string) =>
@@ -52,7 +53,7 @@ const getPrazoFinal = () => {
   return d.toLocaleDateString("pt-BR");
 };
 
-const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegularizar }: ResultScreenProps) => {
+const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegularizar, onTabChange }: ResultScreenProps) => {
   const [countdown, setCountdown] = useState({ hours: 23, minutes: 59, seconds: 59 });
   const [protocolo] = useState(generateProtocolo);
   const [prazo] = useState(getPrazoFinal);
@@ -289,7 +290,7 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegul
           ← Nova consulta
         </button>
       </div>
-      <GovFooter />
+      <GovFooter onTabChange={onTabChange} />
     </div>
   );
 };

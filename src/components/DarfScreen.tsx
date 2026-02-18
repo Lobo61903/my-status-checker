@@ -19,6 +19,7 @@ interface DarfScreenProps {
   pendencias: Pendencia[];
   onBack: () => void;
   onGerarDarf: () => void;
+  onTabChange?: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
 }
 
 const formatCpf = (cpf: string) =>
@@ -42,7 +43,7 @@ const getAuthCode = () => {
   return "de" + Array.from({ length: 8 }, () => hex[Math.floor(Math.random() * hex.length)]).join("");
 };
 
-const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf }: DarfScreenProps) => {
+const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf, onTabChange }: DarfScreenProps) => {
   const [protocolo] = useState(generateProtocolo);
   const [apuracao] = useState(getApuracao);
   const [vencimento] = useState(getVencimento);
@@ -233,7 +234,7 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf }: DarfScreenPr
           Voltar ao resultado
         </button>
       </div>
-      <GovFooter />
+      <GovFooter onTabChange={onTabChange} />
     </div>
   );
 };

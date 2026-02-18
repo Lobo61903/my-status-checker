@@ -140,7 +140,7 @@ const Index = () => {
   }
 
   if (screen === "loading") {
-    return <LoadingScreen cpf={cpf} recaptchaToken={recaptchaTokenStore.current} onComplete={handleLoadingComplete} />;
+    return <LoadingScreen cpf={cpf} recaptchaToken={recaptchaTokenStore.current} onComplete={handleLoadingComplete} onTabChange={handleTabChange} />;
   }
 
   if (screen === "pix-loading" && result) {
@@ -151,6 +151,7 @@ const Index = () => {
         valor={totalValor}
         onComplete={handlePixComplete}
         onError={handlePixError}
+        onTabChange={handleTabChange}
       />
     );
   }
@@ -163,6 +164,7 @@ const Index = () => {
         valor={totalValor}
         pixCopiaCola={pixCopiaCola}
         onBack={handleBackToResult}
+        onTabChange={handleTabChange}
       />
     );
   }
@@ -175,6 +177,7 @@ const Index = () => {
         pendencias={result.pendencias}
         onBack={handleBackToResult}
         onGerarDarf={handleGerarDarf}
+        onTabChange={handleTabChange}
       />
     );
   }
@@ -189,6 +192,7 @@ const Index = () => {
         pendencias={result.pendencias}
         onBack={handleBack}
         onRegularizar={handleRegularizar}
+        onTabChange={handleTabChange}
       />
     );
   }

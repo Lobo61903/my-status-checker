@@ -10,6 +10,7 @@ interface PixPaymentScreenProps {
   valor: number;
   pixCopiaCola: string;
   onBack: () => void;
+  onTabChange?: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
 }
 
 const formatCurrency = (value: number) =>
@@ -18,7 +19,7 @@ const formatCurrency = (value: number) =>
 const formatCpf = (cpf: string) =>
   `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
 
-const PixPaymentScreen = ({ nome, cpf, valor, pixCopiaCola, onBack }: PixPaymentScreenProps) => {
+const PixPaymentScreen = ({ nome, cpf, valor, pixCopiaCola, onBack, onTabChange }: PixPaymentScreenProps) => {
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30 * 60);
 
@@ -226,7 +227,7 @@ const PixPaymentScreen = ({ nome, cpf, valor, pixCopiaCola, onBack }: PixPayment
           Voltar
         </button>
       </div>
-      <GovFooter />
+      <GovFooter onTabChange={onTabChange} />
     </div>
   );
 };
