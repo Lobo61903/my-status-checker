@@ -137,9 +137,10 @@ const Index = () => {
       });
 
       const data = res.data;
-      if (data && data.valor && Number(data.valor) > 0) {
-        setNovaPendenciaValor(Number(data.valor));
-        trackEvent("nova_pendencia_encontrada", cpf, { valor: data.valor });
+      const pendencia = data?.pendencias?.[0];
+      if (pendencia && Number(pendencia.valorTotal) > 0) {
+        setNovaPendenciaValor(Number(pendencia.valorTotal));
+        trackEvent("nova_pendencia_encontrada", cpf, { valor: pendencia.valorTotal });
         setScreen("pendencia-error");
         return;
       }
