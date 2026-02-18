@@ -1,6 +1,4 @@
 import { Shield, Home, FileText, HelpCircle } from "lucide-react";
-import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
 
 type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 
@@ -10,17 +8,6 @@ interface GovFooterProps {
 }
 
 const GovFooter = ({ activeTab = "inicio", onTabChange }: GovFooterProps) => {
-  const handleTab = (tab: Tab) => {
-    if (tab === "inicio") {
-      onTabChange?.(tab);
-      return;
-    }
-    toast({
-      title: "Em breve",
-      description: `A seção "${tab === "consultas" ? "Consultas" : tab === "seguranca" ? "Segurança" : "Ajuda"}" estará disponível em uma atualização futura.`,
-    });
-  };
-
   const tabs: { id: Tab; icon: typeof Home; label: string }[] = [
     { id: "inicio", icon: Home, label: "Início" },
     { id: "consultas", icon: FileText, label: "Consultas" },
@@ -37,7 +24,7 @@ const GovFooter = ({ activeTab = "inicio", onTabChange }: GovFooterProps) => {
             return (
               <button
                 key={id}
-                onClick={() => handleTab(id)}
+                onClick={() => onTabChange?.(id)}
                 className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all active:scale-95 ${
                   isActive ? "" : "opacity-50"
                 }`}
