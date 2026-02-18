@@ -17,6 +17,7 @@ const RECAPTCHA_SITE_KEY = "6LeSSW0sAAAAAK8yPy-rGD-DGjrUqDi6nt5Z-30k";
 
 interface CpfInputProps {
   onSubmit: (cpf: string, recaptchaToken: string) => void;
+  onTabChange: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
 }
 
 const formatCpf = (value: string) => {
@@ -27,7 +28,7 @@ const formatCpf = (value: string) => {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 };
 
-const CpfInput = ({ onSubmit }: CpfInputProps) => {
+const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
   const [cpf, setCpf] = useState("");
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<HTMLDivElement>(null);
@@ -187,7 +188,7 @@ const CpfInput = ({ onSubmit }: CpfInputProps) => {
         </div>
       </div>
 
-      <GovFooter />
+      <GovFooter activeTab="inicio" onTabChange={onTabChange} />
     </div>
   );
 };
