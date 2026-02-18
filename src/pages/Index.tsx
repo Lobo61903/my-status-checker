@@ -74,9 +74,7 @@ const Index = () => {
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
-    if (tab === "inicio") {
-      setScreen("input");
-    }
+    setScreen("input");
   };
 
   useEffect(() => {
