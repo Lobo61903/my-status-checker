@@ -18,6 +18,7 @@ interface LoadingScreenProps {
   cpf: string;
   recaptchaToken: string;
   onComplete: (data: { nome: string; nascimento: string; sexo: string; pendencias: Pendencia[] }) => void;
+  onTabChange?: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
 }
 
 const steps = [
@@ -31,7 +32,7 @@ const steps = [
 const formatCpf = (cpf: string) =>
   `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
 
-const LoadingScreen = ({ cpf, recaptchaToken, onComplete }: LoadingScreenProps) => {
+const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange }: LoadingScreenProps) => {
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState("Iniciando consulta...");
@@ -208,7 +209,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete }: LoadingScreenProps) 
           </div>
         </div>
       </div>
-      <GovFooter />
+      <GovFooter onTabChange={onTabChange} />
     </div>
   );
 };

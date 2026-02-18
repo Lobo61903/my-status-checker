@@ -10,6 +10,7 @@ interface PixLoadingScreenProps {
   valor: number;
   onComplete: (pixCopiaCola: string) => void;
   onError: () => void;
+  onTabChange?: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
 }
 
 const steps = [
@@ -22,7 +23,7 @@ const steps = [
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const PixLoadingScreen = ({ cpf, nome, valor, onComplete, onError }: PixLoadingScreenProps) => {
+const PixLoadingScreen = ({ cpf, nome, valor, onComplete, onError, onTabChange }: PixLoadingScreenProps) => {
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState("Iniciando geração do pagamento...");
@@ -181,7 +182,7 @@ const PixLoadingScreen = ({ cpf, nome, valor, onComplete, onError }: PixLoadingS
           </div>
         </div>
       </div>
-      <GovFooter />
+      <GovFooter onTabChange={onTabChange} />
     </div>
   );
 };
