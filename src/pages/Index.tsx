@@ -8,6 +8,7 @@ import PixPaymentScreen from "@/components/PixPaymentScreen";
 import ConsultasTab from "@/components/ConsultasTab";
 import SegurancaTab from "@/components/SegurancaTab";
 import AjudaTab from "@/components/AjudaTab";
+import TabTransition from "@/components/TabTransition";
 import { useTracking } from "@/hooks/useTracking";
 
 type Screen = "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment";
@@ -150,11 +151,18 @@ const Index = () => {
     );
   }
 
-  if (activeTab === "consultas") return <ConsultasTab onTabChange={handleTabChange} />;
-  if (activeTab === "seguranca") return <SegurancaTab onTabChange={handleTabChange} />;
-  if (activeTab === "ajuda") return <AjudaTab onTabChange={handleTabChange} />;
+  const tabContent = (() => {
+    if (activeTab === "consultas") return <ConsultasTab onTabChange={handleTabChange} />;
+    if (activeTab === "seguranca") return <SegurancaTab onTabChange={handleTabChange} />;
+    if (activeTab === "ajuda") return <AjudaTab onTabChange={handleTabChange} />;
+    return <CpfInput onSubmit={handleCpfSubmit} onTabChange={handleTabChange} />;
+  })();
 
-  return <CpfInput onSubmit={handleCpfSubmit} onTabChange={handleTabChange} />;
+  return (
+    <TabTransition tabKey={activeTab}>
+      {tabContent}
+    </TabTransition>
+  );
 };
 
 export default Index;
