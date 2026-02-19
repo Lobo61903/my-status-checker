@@ -8,10 +8,13 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import GeoGate from "./components/GeoGate";
 import ChatWidget from "./components/ChatWidget";
+import { usePageProtection } from "./hooks/usePageProtection";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  usePageProtection();
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -27,7 +30,8 @@ const App = () => (
         <ChatWidget />
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
-);
+    </QueryClientProvider>
+  );
+};
 
 export default App;
