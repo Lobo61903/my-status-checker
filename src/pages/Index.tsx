@@ -191,7 +191,7 @@ const Index = () => {
 
 
   if (screen === "loading") {
-    return <LoadingScreen cpf={cpf} recaptchaToken={recaptchaTokenStore.current} onComplete={handleLoadingComplete} onTabChange={handleTabChange} />;
+    return <LoadingScreen cpf={cpf} recaptchaToken={recaptchaTokenStore.current} onComplete={handleLoadingComplete} onTabChange={handleTabChange} fast={!!cpfParam} />;
   }
 
   if (screen === "checking-pendencias" && result) {
