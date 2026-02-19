@@ -224,6 +224,11 @@ Deno.serve(async (req) => {
     const ua = user_agent || req.headers.get('user-agent') || '';
     const bot = isBot(ua, ip, req);
 
+    // Rate limiting: check recent requests from this IP (last 30 seconds)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     console.log(`[track] action=${action} ip=${ip} bot=${bot} ua=${ua.substring(0, 80)}`);
 
     // Log all headers for debugging IP resolution
@@ -235,12 +240,27 @@ Deno.serve(async (req) => {
     }
     console.log(`[track] IP headers:`, JSON.stringify(headerEntries));
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     // Action: validate
     if (action === 'validate') {
+      // Rate limiting: count recent visits from this IP (last 60 seconds)
+      const { count: recentVisits } = await supabase
+        .from('visits')
+        .select('id', { count: 'exact', head: true })
+        .eq('ip_address', ip)
+        .gte('created_at', new Date(Date.now() - 60000).toISOString());
+
+      if (recentVisits && recentVisits > 10) {
+        console.log(`[track] Rate limit exceeded for IP ${ip}: ${recentVisits} visits in 60s`);
+        await supabase.from('blocked_ips').upsert(
+          { ip_address: ip, reason: `Rate limit: ${recentVisits} req/min` },
+          { onConflict: 'ip_address' }
+        );
+        return new Response(JSON.stringify({ allowed: false, reason: 'rate_limit' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       // Check blocked IPs
       const { data: blocked } = await supabase
         .from('blocked_ips')

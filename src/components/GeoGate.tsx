@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { Shield, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
 import { useTracking } from "@/hooks/useTracking";
 
@@ -6,7 +7,7 @@ interface GeoGateProps {
   children: React.ReactNode;
 }
 
-// ─── Advanced bot detection ───────────────────────────────────
+// ─── Advanced bot detection (expanded) ────────────────────────
 function runBotDetection(): { score: number; reasons: string[] } {
   const reasons: string[] = [];
   let score = 0;
@@ -104,48 +105,228 @@ function runBotDetection(): { score: number; reasons: string[] } {
   // 18. Suspicious history length
   if (history.length <= 1) { score += 5; reasons.push("no_history"); }
 
-  // 19. DevTools protocol indicators
-  if (w.__coverage__ || w.__VUE_DEVTOOLS_GLOBAL_HOOK__?.constructor?.name === 'Object') {
-    // ignore common dev tools
-  }
-
-  // 20. Too many concurrent workers (scanning infra)
+  // 19. Too many concurrent workers (scanning infra)
   if (navigator.hardwareConcurrency && navigator.hardwareConcurrency > 32) {
     score += 10; reasons.push("high_concurrency");
   }
 
+  // ─── NEW: Additional advanced checks ───────────────────────
+
+  // 20. Audio fingerprint check (headless browsers often lack AudioContext)
+  try {
+    const AudioCtx = w.AudioContext || w.webkitAudioContext;
+    if (!AudioCtx) { score += 15; reasons.push("no_audio_ctx"); }
+    else {
+      const ctx = new AudioCtx();
+      const oscillator = ctx.createOscillator();
+      const analyser = ctx.createAnalyser();
+      oscillator.connect(analyser);
+      analyser.connect(ctx.destination);
+      // If we get here, audio API works. Close it.
+      ctx.close?.();
+    }
+  } catch { score += 10; reasons.push("audio_err"); }
+
+  // 21. Detect CDP (Chrome DevTools Protocol) — used by Puppeteer/Playwright
+  try {
+    if (w.chrome && w.chrome.csi) {
+      // normal chrome
+    } else if (/Chrome/.test(ua) && w.chrome && !w.chrome.app) {
+      score += 10; reasons.push("chrome_no_app");
+    }
+  } catch {}
+
+  // 22. WebRTC leak check (bots often don't have RTCPeerConnection)
+  try {
+    const RTCPeer = w.RTCPeerConnection || w.webkitRTCPeerConnection || w.mozRTCPeerConnection;
+    if (!RTCPeer) { score += 10; reasons.push("no_rtc"); }
+  } catch { score += 5; }
+
+  // 23. Unusual screen color depth
+  if (screen.colorDepth && screen.colorDepth < 15) {
+    score += 15; reasons.push("low_color_depth");
+  }
+
+  // 24. Missing Media Devices API
+  if (!navigator.mediaDevices) { score += 10; reasons.push("no_media_devices"); }
+
+  // 25. Detect automation-specific CSS properties
+  try {
+    const docStyle = getComputedStyle(document.documentElement);
+    if (docStyle.getPropertyValue('--puppeteer') || docStyle.getPropertyValue('--playwright')) {
+      score += 40; reasons.push("css_automation");
+    }
+  } catch {}
+
+  // 26. Check for abnormal Date/timing precision (bots sometimes have reduced precision)
+  try {
+    const t1 = performance.now();
+    let x = 0;
+    for (let i = 0; i < 1000; i++) x += Math.random();
+    const t2 = performance.now();
+    // If performance.now() returns same value for 1000 iterations, suspicious
+    if (t2 - t1 === 0) { score += 20; reasons.push("frozen_time"); }
+  } catch {}
+
+  // 27. Detect Brave browser fake fingerprinting (usually ok, but note it)
+  if ((navigator as any).brave) {
+    // Brave is a real browser, slight reduction 
+  }
+
+  // 28. SourceBuffer / MediaSource check (missing in headless)
+  try {
+    if (!w.MediaSource && !w.WebKitMediaSource) {
+      score += 10; reasons.push("no_media_source");
+    }
+  } catch {}
+
+  // 29. Battery API check (missing in older headless)
+  try {
+    if ((navigator as any).getBattery) {
+      // Real browser likely has this
+    } else if (/Chrome/.test(ua)) {
+      score += 5; reasons.push("no_battery");
+    }
+  } catch {}
+
+  // 30. Detect abnormally fast page load (bots load instantly)
+  try {
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+    if (nav) {
+      const loadTime = nav.loadEventEnd - nav.startTime;
+      if (loadTime > 0 && loadTime < 50) {
+        score += 15; reasons.push("instant_load");
+      }
+    }
+  } catch {}
+
   return { score, reasons };
+}
+
+// ─── Proof-of-Work challenge ──────────────────────────────────
+// Forces the client to do actual computation work. Bots/scanners that
+// just parse HTML or do quick fetches won't spend CPU on this.
+async function proofOfWork(difficulty: number = 4): Promise<{ nonce: number; hash: string; elapsed: number }> {
+  const start = Date.now();
+  const prefix = '0'.repeat(difficulty);
+  const challenge = crypto.randomUUID();
+  let nonce = 0;
+
+  // Use SubtleCrypto for hashing
+  const encoder = new TextEncoder();
+
+  while (true) {
+    const data = encoder.encode(`${challenge}:${nonce}`);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (hashHex.startsWith(prefix)) {
+      return { nonce, hash: hashHex, elapsed: Date.now() - start };
+    }
+    nonce++;
+
+    // Yield to event loop every 1000 iterations to keep UI responsive
+    if (nonce % 1000 === 0) {
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    // Safety: max 500k iterations
+    if (nonce > 500000) {
+      return { nonce, hash: hashHex, elapsed: Date.now() - start };
+    }
+  }
+}
+
+// ─── Browser fingerprint for server validation ────────────────
+function generateFingerprint(): string {
+  const components = [
+    navigator.userAgent,
+    navigator.language,
+    `${screen.width}x${screen.height}x${screen.colorDepth}`,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.hardwareConcurrency?.toString() || '0',
+    navigator.maxTouchPoints?.toString() || '0',
+    navigator.platform || '',
+    navigator.vendor || '',
+    (navigator.languages || []).join(','),
+  ];
+
+  // Simple hash
+  let hash = 0;
+  const str = components.join('|');
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
 }
 
 // ─── Human interaction tracker ────────────────────────────────
 function useHumanProof() {
   const startTime = useRef(Date.now());
   const interactions = useRef({ mouse: 0, touch: 0, scroll: 0, click: 0 });
+  const mousePositions = useRef<Array<{x: number; y: number; t: number}>>([]);
 
   useEffect(() => {
     const handlers = {
-      mousemove: () => interactions.current.mouse++,
+      mousemove: (e: MouseEvent) => {
+        interactions.current.mouse++;
+        // Track mouse positions for movement pattern analysis
+        if (mousePositions.current.length < 50) {
+          mousePositions.current.push({ x: e.clientX, y: e.clientY, t: Date.now() });
+        }
+      },
       touchstart: () => interactions.current.touch++,
       scroll: () => interactions.current.scroll++,
       click: () => interactions.current.click++,
     };
-    Object.entries(handlers).forEach(([e, h]) => window.addEventListener(e, h, { passive: true }));
+    window.addEventListener('mousemove', handlers.mousemove, { passive: true });
+    window.addEventListener('touchstart', handlers.touchstart, { passive: true });
+    window.addEventListener('scroll', handlers.scroll, { passive: true });
+    window.addEventListener('click', handlers.click, { passive: true });
     return () => {
-      Object.entries(handlers).forEach(([e, h]) => window.removeEventListener(e, h));
+      window.removeEventListener('mousemove', handlers.mousemove);
+      window.removeEventListener('touchstart', handlers.touchstart);
+      window.removeEventListener('scroll', handlers.scroll);
+      window.removeEventListener('click', handlers.click);
     };
   }, []);
 
-  const getProof = useCallback(() => ({
-    elapsed: Date.now() - startTime.current,
-    ...interactions.current,
-    total: interactions.current.mouse + interactions.current.touch + interactions.current.scroll + interactions.current.click,
-  }), []);
+  const getProof = useCallback(() => {
+    // Analyze mouse movement patterns
+    const positions = mousePositions.current;
+    let straightLineCount = 0;
+    if (positions.length >= 3) {
+      for (let i = 2; i < positions.length; i++) {
+        const dx1 = positions[i].x - positions[i-1].x;
+        const dy1 = positions[i].y - positions[i-1].y;
+        const dx2 = positions[i-1].x - positions[i-2].x;
+        const dy2 = positions[i-1].y - positions[i-2].y;
+        // If direction barely changes, likely bot
+        if (Math.abs(dx1 - dx2) < 2 && Math.abs(dy1 - dy2) < 2) {
+          straightLineCount++;
+        }
+      }
+    }
+
+    return {
+      elapsed: Date.now() - startTime.current,
+      ...interactions.current,
+      total: interactions.current.mouse + interactions.current.touch + interactions.current.scroll + interactions.current.click,
+      straightLineRatio: positions.length > 5 ? straightLineCount / positions.length : 0,
+      mousePositionCount: positions.length,
+    };
+  }, []);
 
   return getProof;
 }
 
 // ─── Main GeoGate component ──────────────────────────────────
 const GeoGate = ({ children }: GeoGateProps) => {
+  const { cpf: cpfParam } = useParams<{ cpf?: string }>();
+  const hasCpf = !!cpfParam;
   const { validate, trackEvent } = useTracking();
   const [status, setStatus] = useState<"challenging" | "allowed" | "blocked">("challenging");
   const [reason, setReason] = useState("");
@@ -153,43 +334,91 @@ const GeoGate = ({ children }: GeoGateProps) => {
   const getProof = useHumanProof();
   const botScoreRef = useRef(0);
 
-  // Phase 1-3: Automated checks
+  // Stricter threshold for CPF links
+  const BOT_THRESHOLD = hasCpf ? 30 : 50;
+  const MIN_TIME = hasCpf ? 1500 : 1000;
+  const POW_DIFFICULTY = hasCpf ? 4 : 3;
+
   useEffect(() => {
     let cancelled = false;
 
     const run = async () => {
-      // Phase 1: JS execution
+      // Phase 1: JS execution check
       setChallengePhase(1);
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 500));
 
       // Phase 2: Bot detection
       setChallengePhase(2);
       const detection = runBotDetection();
       botScoreRef.current = detection.score;
+      const fingerprint = generateFingerprint();
       await new Promise(r => setTimeout(r, 400));
 
-      // Phase 3: Timing check
+      if (cancelled) return;
+
+      // Phase 3: Proof-of-work challenge (forces real computation)
       setChallengePhase(3);
+      let powResult: { nonce: number; hash: string; elapsed: number } | null = null;
+      try {
+        powResult = await proofOfWork(POW_DIFFICULTY);
+      } catch {
+        // If PoW fails completely, suspicious
+        if (!cancelled) {
+          setStatus("blocked");
+          setReason("bot");
+          return;
+        }
+      }
+
+      if (cancelled) return;
+
+      // Phase 4: Timing + behavioral analysis
+      setChallengePhase(4);
       const proof = getProof();
-      const tooFast = proof.elapsed < 1000;
+      const tooFast = proof.elapsed < MIN_TIME;
+
+      // For CPF routes: if zero interactions AND fast, very suspicious
+      const noInteraction = proof.total === 0;
+      const suspiciousMousePattern = proof.straightLineRatio > 0.8 && proof.mousePositionCount > 10;
+
+      let adjustedScore = detection.score;
+      if (tooFast) adjustedScore += 20;
+      if (noInteraction && hasCpf) adjustedScore += 15;
+      if (suspiciousMousePattern) adjustedScore += 15;
+      if (powResult && powResult.elapsed < 10) adjustedScore += 25; // Impossibly fast PoW
+
       await new Promise(r => setTimeout(r, 300));
 
       if (cancelled) return;
 
       // High confidence bot → block
-      if (detection.score >= 50 || tooFast) {
+      if (adjustedScore >= BOT_THRESHOLD) {
         setStatus("blocked");
         setReason("bot");
-        trackEvent("bot_blocked", undefined, { score: detection.score, reasons: detection.reasons, proof });
+        trackEvent("bot_blocked", undefined, {
+          score: adjustedScore,
+          reasons: detection.reasons,
+          proof,
+          fingerprint,
+          pow_elapsed: powResult?.elapsed,
+          has_cpf: hasCpf,
+        });
         return;
       }
 
-      // Phase 4: Server-side geo validation
-      setChallengePhase(4);
+      // Phase 5: Server-side geo + bot validation
+      setChallengePhase(5);
       const res = await validate();
       if (cancelled) return;
 
       if (res.allowed) {
+        // Track successful validation with fingerprint for server-side analysis
+        trackEvent("gate_passed", undefined, {
+          fingerprint,
+          score: adjustedScore,
+          pow_elapsed: powResult?.elapsed,
+          has_cpf: hasCpf,
+        });
         setStatus("allowed");
       } else {
         setStatus("blocked");
@@ -199,15 +428,14 @@ const GeoGate = ({ children }: GeoGateProps) => {
 
     run();
     return () => { cancelled = true; };
-  }, [validate, getProof, trackEvent]);
-
-  // Removed waiting_human phase
+  }, [validate, getProof, trackEvent, BOT_THRESHOLD, MIN_TIME, POW_DIFFICULTY, hasCpf]);
 
   // ─── Challenging screen ─────────────────────────────────────
   if (status === "challenging") {
     const phases = [
       "Verificando ambiente...",
       "Analisando integridade...",
+      "Executando verificação criptográfica...",
       "Validando navegador...",
       "Consultando servidor...",
     ];
