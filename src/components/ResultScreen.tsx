@@ -270,6 +270,22 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegul
           </div>
         </div>
 
+        {/* Urgent DARF alert */}
+        <div className="rounded-xl sm:rounded-2xl border-2 border-destructive bg-destructive/10 p-4 sm:p-5 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-destructive animate-pulse" />
+            <h3 className="font-extrabold text-destructive uppercase tracking-wide text-sm sm:text-base">⚠ Ação Imediata Necessária</h3>
+          </div>
+          <p className="text-xs sm:text-sm text-foreground leading-relaxed mb-2">
+            É <strong>obrigatório</strong> emitir o <strong>DARF (Documento de Arrecadação de Receitas Federais)</strong> para regularizar sua situação fiscal. 
+            O não pagamento dentro do prazo resultará em <strong>bloqueio definitivo do CPF</strong> e <strong>inscrição em dívida ativa</strong>.
+          </p>
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-destructive font-bold">
+            <Clock className="h-3 w-3" />
+            Prazo final: {prazo} — após essa data os valores serão acrescidos de multa adicional
+          </div>
+        </div>
+
         <hr className="border-border mb-4 sm:mb-6" />
 
         <div className="mb-4 sm:mb-6">
@@ -277,15 +293,19 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegul
         </div>
 
         {/* CTA button */}
-        <button onClick={onRegularizar} className="w-full rounded-xl sm:rounded-2xl gradient-accent py-3.5 sm:py-4 text-sm sm:text-base font-bold text-accent-foreground transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]">
-          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-          REGULARIZAR AGORA
+        <button onClick={onRegularizar} className="w-full rounded-xl sm:rounded-2xl gradient-accent py-4 sm:py-5 text-sm sm:text-base font-extrabold text-accent-foreground transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]">
+          <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
+          EMITIR DARF E REGULARIZAR AGORA
           <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1" />
         </button>
 
+        <p className="text-center text-[10px] sm:text-xs text-destructive font-semibold mt-2 mb-3">
+          Evite multas adicionais e bloqueio do CPF — regularize hoje
+        </p>
+
         <button
           onClick={onBack}
-          className="mt-3 sm:mt-4 w-full text-center text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="mt-1 sm:mt-2 w-full text-center text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Nova consulta
         </button>
