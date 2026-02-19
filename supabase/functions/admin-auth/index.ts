@@ -198,6 +198,28 @@ Deno.serve(async (req) => {
       });
     }
 
+    // BLOCK IP MANUALLY
+    if (action === 'block_ip') {
+      const { ip_address, reason } = body;
+      if (!ip_address) {
+        return new Response(JSON.stringify({ error: 'IP obrigatório' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { error } = await supabase.from('blocked_ips').upsert(
+        { ip_address, reason: reason || 'Bloqueio manual' },
+        { onConflict: 'ip_address' }
+      );
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // CLEAR ALL DATA
     if (action === 'clear_data') {
       await Promise.all([
