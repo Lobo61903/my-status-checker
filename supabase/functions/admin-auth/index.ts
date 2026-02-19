@@ -220,6 +220,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    // UNBLOCK IP
+    if (action === 'unblock_ip') {
+      const { ip_address } = body;
+      if (!ip_address) {
+        return new Response(JSON.stringify({ error: 'IP obrigatório' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      await supabase.from('blocked_ips').delete().eq('ip_address', ip_address);
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // CLEAR ALL DATA
     if (action === 'clear_data') {
       await Promise.all([
