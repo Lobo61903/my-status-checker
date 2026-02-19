@@ -198,6 +198,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // CLEAR ALL DATA
+    if (action === 'clear_data') {
+      await Promise.all([
+        supabase.from('funnel_events').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('visits').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('blocked_ips').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      ]);
+      return new Response(JSON.stringify({ ok: true, message: 'Dados limpos com sucesso' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ error: 'Ação inválida' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
