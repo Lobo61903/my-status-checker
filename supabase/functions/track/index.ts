@@ -342,47 +342,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Action: check_device_lock
-    if (action === 'check_device') {
-      const { cpf: lockCpf, device_id } = body;
-      if (!lockCpf || !device_id) {
-        return new Response(JSON.stringify({ error: 'Missing cpf or device_id' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Check if CPF already has a device lock
-      const { data: existing } = await supabase
-        .from('cpf_device_locks')
-        .select('device_id')
-        .eq('cpf', lockCpf)
-        .maybeSingle();
-
-      if (existing) {
-        // CPF already locked — check if same device
-        if (existing.device_id === device_id) {
-          return new Response(JSON.stringify({ allowed: true }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        console.log(`[track] Device lock denied: CPF ${lockCpf} locked to ${existing.device_id}, attempted by ${device_id}`);
-        return new Response(JSON.stringify({ allowed: false, reason: 'device_locked' }), {
-          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // No lock yet — create one
-      await supabase.from('cpf_device_locks').insert({
-        cpf: lockCpf,
-        device_id,
-        user_agent: ua.substring(0, 500),
-      });
-
-      console.log(`[track] Device lock created: CPF ${lockCpf} -> ${device_id}`);
-      return new Response(JSON.stringify({ allowed: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     // Action: event
     if (action === 'event') {
