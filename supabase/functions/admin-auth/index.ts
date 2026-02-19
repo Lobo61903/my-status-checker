@@ -43,6 +43,33 @@ async function verifyToken(token: string, secret: string): Promise<Record<string
   }
 }
 
+// Fetch all rows from a table, bypassing the 1000-row default limit
+async function fetchAllRows(supabase: any, table: string, select: string, orderBy?: string, batchSize = 1000): Promise<any[]> {
+  const allData: any[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabase.from(table).select(select).range(offset, offset + batchSize - 1);
+    if (orderBy) {
+      query = query.order(orderBy, { ascending: false });
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.error(`fetchAllRows error on ${table}:`, error);
+      break;
+    }
+    if (data && data.length > 0) {
+      allData.push(...data);
+      offset += batchSize;
+      hasMore = data.length === batchSize;
+    } else {
+      hasMore = false;
+    }
+  }
+  return allData;
+}
+
 const jsonResponse = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
@@ -91,73 +118,50 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Não autorizado' }, 401);
     }
 
-    // DASHBOARD STATS (with pagination)
+    // DASHBOARD STATS (with pagination for display, full fetch for aggregation)
     if (action === 'dashboard') {
       const page = Math.max(1, Number(body.page) || 1);
       const perPage = Math.min(200, Math.max(10, Number(body.per_page) || 50));
       const from = (page - 1) * perPage;
       const to = from + perPage - 1;
 
-      const [visits, events, blocked] = await Promise.all([
+      // Get total counts
+      const [visitsHead, eventsHead, blockedHead] = await Promise.all([
         supabase.from('visits').select('*', { count: 'exact', head: true }),
         supabase.from('funnel_events').select('*', { count: 'exact', head: true }),
         supabase.from('blocked_ips').select('*', { count: 'exact', head: true }),
       ]);
 
-      // Paginated visits
-      const { data: recentVisits, count: visitsCount } = await supabase
-        .from('visits')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        // .range(from, to);
-      // Remove pagination for visits
-      // .range(from, to);
+      // Paginated data for display tables
+      const [paginatedVisits, paginatedFunnel, paginatedBlocked] = await Promise.all([
+        supabase.from('visits').select('*').order('created_at', { ascending: false }).range(from, to),
+        supabase.from('funnel_events').select('event_type, cpf, created_at, metadata, session_id').order('created_at', { ascending: false }).range(from, to),
+        supabase.from('blocked_ips').select('*').order('created_at', { ascending: false }).range(from, to),
+      ]);
 
-      // Paginated funnel events
-      const { data: funnelData, count: funnelCount } = await supabase
-        .from('funnel_events')
-        .select('event_type, cpf, created_at, metadata, session_id', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        // .range(from, to);
-      // Remove pagination for funnel events
-      // .range(from, to);
-
-      // Country breakdown (no pagination - used for aggregation)
-      const { data: countryData } = await supabase
-        .from('visits')
-        .select('country_code, city, region');
-
-      // Paginated blocked IPs
-      const { data: blockedList, count: blockedCount } = await supabase
-        .from('blocked_ips')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        // .range(from, to);
-      // Remove pagination for blocked IPs
-      // .range(from, to);
-
-      // All funnel events for aggregation (counts, values)
-      const { data: allFunnelData } = await supabase
-        .from('funnel_events')
-        .select('event_type, cpf, session_id, metadata');
+      // Fetch ALL data for aggregation (bypasses 1000-row limit)
+      const [allFunnelData, countryData] = await Promise.all([
+        fetchAllRows(supabase, 'funnel_events', 'event_type, cpf, session_id, metadata', 'created_at'),
+        fetchAllRows(supabase, 'visits', 'country_code, city, region, is_mobile', 'created_at'),
+      ]);
 
       return jsonResponse({
         stats: {
-          total_visits: visits.count || 0,
-          total_events: events.count || 0,
-          total_blocked: blocked.count || 0,
+          total_visits: visitsHead.count || 0,
+          total_events: eventsHead.count || 0,
+          total_blocked: blockedHead.count || 0,
         },
-        recentVisits: recentVisits || [],
-        funnelData: funnelData || [],
-        allFunnelData: allFunnelData || [],
-        countryData: countryData || [],
-        blockedList: blockedList || [],
+        recentVisits: paginatedVisits.data || [],
+        funnelData: paginatedFunnel.data || [],
+        allFunnelData: allFunnelData,
+        countryData: countryData,
+        blockedList: paginatedBlocked.data || [],
         pagination: {
           page,
           per_page: perPage,
-          visits_total: visitsCount || 0,
-          funnel_total: funnelCount || 0,
-          blocked_total: blockedCount || 0,
+          visits_total: visitsHead.count || 0,
+          funnel_total: eventsHead.count || 0,
+          blocked_total: blockedHead.count || 0,
         },
       });
     }
