@@ -15,16 +15,46 @@ const BOT_PATTERNS = [
   /httpx/i, /scrapy/i, /phantomjs/i, /headless/i, /selenium/i,
   /puppeteer/i, /playwright/i, /lighthouse/i, /node-fetch/i, /axios/i,
   /Go-http-client/i, /Java\//i, /okhttp/i, /undici/i, /fetch\//i,
+  /urlscan/i, /scan/i, /checker/i, /monitor/i, /probe/i,
+  /PhishTank/i, /SafeBrowsing/i, /VirusTotal/i, /Sucuri/i, /Netcraft/i,
+  /ScamAdviser/i, /CheckPhish/i, /PhishLabs/i, /Fraudwatch/i,
+  /BrandShield/i, /Bolster/i, /Cofense/i, /ZeroFox/i,
+  /sandbox/i, /detonation/i, /cuckoo/i, /joe.?sandbox/i,
+  /hybrid.?analysis/i, /any\.run/i, /rendertron/i, /prerender/i,
+  /browsershot/i, /screenshotmachine/i, /preview/i, /inspector/i,
+  /link.?check/i, /site.?check/i, /url.?check/i,
+  /safe.?browse/i, /phish.?detect/i, /fraud.?detect/i,
+  /threat.?intel/i, /reputation/i, /analysis/i,
+  /Apache-HttpClient/i, /libwww/i, /http-client/i,
+];
+
+const SCANNER_IP_PREFIXES = [
+  '185.180.143.', '167.248.133.', '71.6.',
+  '198.235.24.', '66.240.', '93.120.27.',
+  '94.102.49.', '64.62.202.', '193.163.125.', '2.57.122.',
 ];
 
 function isBotRequest(req: Request): boolean {
   const ua = req.headers.get('user-agent') || '';
   if (!ua || ua.length < 20) return true;
   if (BOT_PATTERNS.some(p => p.test(ua))) return true;
+
+  const ip = getClientIp(req);
+  if (SCANNER_IP_PREFIXES.some(prefix => ip.startsWith(prefix))) return true;
+
   const acceptLang = req.headers.get('accept-language') || '';
   if (!acceptLang || acceptLang === '*') return true;
   const secChUa = req.headers.get('sec-ch-ua') || '';
   if (secChUa.includes('HeadlessChrome') || secChUa.includes('Headless')) return true;
+
+  // Chrome without sec-fetch headers = likely not a real browser
+  const secFetchDest = req.headers.get('sec-fetch-dest') || '';
+  const secFetchMode = req.headers.get('sec-fetch-mode') || '';
+  if (!secFetchDest && !secFetchMode && /Chrome\/\d/.test(ua)) return true;
+
+  const hasBrPtLang = /pt|br|en/i.test(acceptLang);
+  if (!hasBrPtLang) return true;
+
   return false;
 }
 

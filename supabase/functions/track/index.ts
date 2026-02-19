@@ -5,7 +5,7 @@ const corsHeaders = {
 
 const ALLOWED_COUNTRIES = ['BR', 'PT'];
 
-// Comprehensive bot/scanner UA patterns
+// Comprehensive bot/scanner/checker UA patterns
 const BOT_PATTERNS = [
   /bot/i, /crawl/i, /spider/i, /slurp/i, /mediapartners/i,
   /facebookexternalhit/i, /linkedinbot/i, /twitterbot/i,
@@ -29,20 +29,81 @@ const BOT_PATTERNS = [
   /ClamAV/i, /MalwareBytes/i, /Quttera/i, /SiteLock/i,
   /Censys/i, /Shodan/i, /ZoomEye/i, /BinaryEdge/i,
   /Nmap/i, /Masscan/i, /Zgrab/i, /RiskIQ/i, /IPinfo/i,
+  // Anti-fraud / authenticity checkers
+  /ScamAdviser/i, /Trustpilot/i, /SiteJabber/i, /ScamDetector/i,
+  /Scamwatch/i, /CheckPhish/i, /PhishLabs/i, /Fraudwatch/i,
+  /BrandShield/i, /Bolster/i, /Cofense/i, /KnowBe4/i,
+  /Proofpoint/i, /Mimecast/i, /Barracuda/i, /IronScales/i,
+  /GreatHorn/i, /Abnormal/i, /Area1/i, /Agari/i,
+  /ZeroFox/i, /RiskRecon/i, /SecurityScorecard/i,
+  /webgatherer/i, /research/i, /preview/i, /inspector/i,
+  /fetch/i, /request/i, /http-client/i, /libwww/i,
+  /link.?check/i, /site.?check/i, /url.?check/i,
+  /safe.?browse/i, /phish.?detect/i, /fraud.?detect/i,
+  /threat.?intel/i, /reputation/i, /classify/i,
+  /analysis/i, /sandbox/i, /detonation/i,
+  /cuckoo/i, /joe.?sandbox/i, /hybrid.?analysis/i, /any\.run/i,
+  /browsershot/i, /screenshotmachine/i, /htmlcsstoimage/i,
+  /microlink/i, /rendertron/i, /prerender/i,
+];
+
+// Known scanner/checker IP ranges (CIDRs simplified to prefixes)
+const SCANNER_IP_PREFIXES = [
+  '185.180.143.', // Censys
+  '167.248.133.', // Censys
+  '71.6.', // Censys
+  '198.235.24.', // Shodan
+  '66.240.', // Shodan
+  '93.120.27.', // Shodan
+  '94.102.49.', // Shodan
+  '64.62.202.', // BinaryEdge
+  '193.163.125.', // urlscan
+  '2.57.122.', // urlscan
 ];
 
 function isBot(ua: string, ip: string, req: Request): boolean {
   if (!ua || ua.length < 20) return true;
   if (BOT_PATTERNS.some((p) => p.test(ua))) return true;
 
+  // Check scanner IP prefixes
+  if (SCANNER_IP_PREFIXES.some(prefix => ip.startsWith(prefix))) {
+    console.log(`[bot] Scanner IP detected: ${ip}`);
+    return true;
+  }
+
   const acceptLang = req.headers.get('accept-language') || '';
   const secChUa = req.headers.get('sec-ch-ua') || '';
+  const secFetchDest = req.headers.get('sec-fetch-dest') || '';
+  const secFetchMode = req.headers.get('sec-fetch-mode') || '';
+  const secFetchSite = req.headers.get('sec-fetch-site') || '';
 
   if (!acceptLang || acceptLang === '*') return true;
   if (secChUa.includes('HeadlessChrome') || secChUa.includes('Headless')) return true;
 
+  // Real browsers always send sec-fetch headers
+  const hasSecFetch = secFetchDest || secFetchMode || secFetchSite;
+  if (!hasSecFetch && /Chrome\/\d/.test(ua)) {
+    console.log(`[bot] Chrome UA without sec-fetch headers: ${ip}`);
+    return true;
+  }
+
   const hasBrPtLang = /pt|br|en/i.test(acceptLang);
   if (!hasBrPtLang) return true;
+
+  // Abnormally short accept-language (bots often send just "en" or "pt")
+  if (acceptLang.length < 5 && !/^(pt-BR|pt-PT|en-US|en-GB)/i.test(acceptLang)) {
+    console.log(`[bot] Suspicious accept-language: ${acceptLang}`);
+    return true;
+  }
+
+  // Check for missing Accept header (bots often omit it)
+  const accept = req.headers.get('accept') || '';
+  if (!accept || accept === '*/*') {
+    // Only flag if not a legitimate API call
+    if (!/application\/json/.test(accept) && accept !== '*/*') {
+      return true;
+    }
+  }
 
   return false;
 }
