@@ -59,35 +59,5 @@ export function useTracking() {
     }
   }, []);
 
-  const checkDeviceLock = useCallback(async (cpf: string): Promise<{ allowed: boolean; reason?: string }> => {
-    try {
-      // Generate a stable device ID stored in localStorage
-      const DEVICE_KEY = "rf_device_id";
-      let deviceId = localStorage.getItem(DEVICE_KEY);
-      if (!deviceId) {
-        deviceId = crypto.randomUUID();
-        localStorage.setItem(DEVICE_KEY, deviceId);
-      }
-
-      const res = await supabase.functions.invoke("track", {
-        body: {
-          action: "check_device",
-          session_id: sessionId.current,
-          cpf,
-          device_id: deviceId,
-          user_agent: navigator.userAgent,
-        },
-      });
-
-      if (res.error) {
-        return { allowed: false, reason: 'error' };
-      }
-
-      return res.data as { allowed: boolean; reason?: string };
-    } catch {
-      return { allowed: false, reason: 'error' };
-    }
-  }, []);
-
-  return { validate, trackEvent, checkDeviceLock, sessionId: sessionId.current };
+  return { validate, trackEvent, sessionId: sessionId.current };
 }
