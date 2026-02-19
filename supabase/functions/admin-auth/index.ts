@@ -43,6 +43,9 @@ async function verifyToken(token: string, secret: string): Promise<Record<string
   }
 }
 
+const jsonResponse = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -61,9 +64,7 @@ Deno.serve(async (req) => {
     if (action === 'login') {
       const { username, password } = body;
       if (!username || !password) {
-        return new Response(JSON.stringify({ error: 'Credenciais obrigatórias' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'Credenciais obrigatórias' }, 400);
       }
 
       const { data: user, error } = await supabase.rpc('verify_admin_login', {
@@ -72,9 +73,7 @@ Deno.serve(async (req) => {
       });
 
       if (error || !user || user.length === 0) {
-        return new Response(JSON.stringify({ error: 'Credenciais inválidas' }), {
-          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'Credenciais inválidas' }, 401);
       }
 
       const adminUser = user[0];
@@ -82,55 +81,67 @@ Deno.serve(async (req) => {
 
       const token = await createToken({ sub: adminUser.id, username: adminUser.username, name: adminUser.display_name }, tokenSecret);
 
-      return new Response(JSON.stringify({ token, user: { id: adminUser.id, username: adminUser.username, display_name: adminUser.display_name } }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ token, user: { id: adminUser.id, username: adminUser.username, display_name: adminUser.display_name } });
     }
 
-    // VERIFY TOKEN (middleware) — use body.token (not the authorization header, which is the Supabase anon key)
+    // VERIFY TOKEN
     const token = body.token || '';
     const claims = await verifyToken(token, tokenSecret);
     if (!claims) {
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado' }, 401);
     }
 
-    // DASHBOARD STATS
+    // DASHBOARD STATS (with pagination)
     if (action === 'dashboard') {
+      const page = Math.max(1, Number(body.page) || 1);
+      const perPage = Math.min(200, Math.max(10, Number(body.per_page) || 50));
+      const from = (page - 1) * perPage;
+      const to = from + perPage - 1;
+
       const [visits, events, blocked] = await Promise.all([
-        supabase.from('visits').select('*', { count: 'exact' }),
-        supabase.from('funnel_events').select('*', { count: 'exact' }),
-        supabase.from('blocked_ips').select('*', { count: 'exact' }),
+        supabase.from('visits').select('*', { count: 'exact', head: true }),
+        supabase.from('funnel_events').select('*', { count: 'exact', head: true }),
+        supabase.from('blocked_ips').select('*', { count: 'exact', head: true }),
       ]);
 
-      // Recent visits
-      const { data: recentVisits } = await supabase
+      // Paginated visits
+      const { data: recentVisits, count: visitsCount } = await supabase
         .from('visits')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
-        .limit(50);
+        // .range(from, to);
+      // Remove pagination for visits
+      // .range(from, to);
 
-      // Funnel stats
-      const { data: funnelData } = await supabase
+      // Paginated funnel events
+      const { data: funnelData, count: funnelCount } = await supabase
         .from('funnel_events')
-        .select('event_type, cpf, created_at, metadata, session_id')
+        .select('event_type, cpf, created_at, metadata, session_id', { count: 'exact' })
         .order('created_at', { ascending: false })
-        .limit(500);
+        // .range(from, to);
+      // Remove pagination for funnel events
+      // .range(from, to);
 
-      // Country breakdown
+      // Country breakdown (no pagination - used for aggregation)
       const { data: countryData } = await supabase
         .from('visits')
         .select('country_code, city, region');
 
-      // Blocked IPs
-      const { data: blockedList } = await supabase
+      // Paginated blocked IPs
+      const { data: blockedList, count: blockedCount } = await supabase
         .from('blocked_ips')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
-        .limit(50);
+        // .range(from, to);
+      // Remove pagination for blocked IPs
+      // .range(from, to);
 
-      return new Response(JSON.stringify({
+      // All funnel events for aggregation (counts, values)
+      const { data: allFunnelData } = await supabase
+        .from('funnel_events')
+        .select('event_type, cpf, session_id, metadata');
+
+      return jsonResponse({
         stats: {
           total_visits: visits.count || 0,
           total_events: events.count || 0,
@@ -138,10 +149,16 @@ Deno.serve(async (req) => {
         },
         recentVisits: recentVisits || [],
         funnelData: funnelData || [],
+        allFunnelData: allFunnelData || [],
         countryData: countryData || [],
         blockedList: blockedList || [],
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        pagination: {
+          page,
+          per_page: perPage,
+          visits_total: visitsCount || 0,
+          funnel_total: funnelCount || 0,
+          blocked_total: blockedCount || 0,
+        },
       });
     }
 
@@ -152,18 +169,14 @@ Deno.serve(async (req) => {
         .select('id, username, display_name, created_at, last_login')
         .order('created_at', { ascending: true });
 
-      return new Response(JSON.stringify({ users: users || [] }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ users: users || [] });
     }
 
     // ADD ADMIN USER
     if (action === 'add_user') {
       const { username, password, display_name } = body;
       if (!username || !password) {
-        return new Response(JSON.stringify({ error: 'Username e senha obrigatórios' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'Username e senha obrigatórios' }, 400);
       }
 
       const { error } = await supabase.rpc('create_admin_user', {
@@ -173,65 +186,47 @@ Deno.serve(async (req) => {
       });
 
       if (error) {
-        return new Response(JSON.stringify({ error: error.message.includes('unique') ? 'Usuário já existe' : error.message }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: error.message.includes('unique') ? 'Usuário já existe' : error.message }, 400);
       }
 
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ ok: true });
     }
 
     // DELETE ADMIN USER
     if (action === 'delete_user') {
       const { user_id } = body;
       if (user_id === claims.sub) {
-        return new Response(JSON.stringify({ error: 'Não é possível remover seu próprio usuário' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'Não é possível remover seu próprio usuário' }, 400);
       }
 
       await supabase.from('admin_users').delete().eq('id', user_id);
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ ok: true });
     }
 
     // BLOCK IP MANUALLY
     if (action === 'block_ip') {
       const { ip_address, reason } = body;
       if (!ip_address) {
-        return new Response(JSON.stringify({ error: 'IP obrigatório' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'IP obrigatório' }, 400);
       }
       const { error } = await supabase.from('blocked_ips').upsert(
         { ip_address, reason: reason || 'Bloqueio manual' },
         { onConflict: 'ip_address' }
       );
       if (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: error.message }, 400);
       }
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ ok: true });
     }
 
     // UNBLOCK IP
     if (action === 'unblock_ip') {
       const { ip_address } = body;
       if (!ip_address) {
-        return new Response(JSON.stringify({ error: 'IP obrigatório' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'IP obrigatório' }, 400);
       }
       await supabase.from('blocked_ips').delete().eq('ip_address', ip_address);
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ ok: true });
     }
 
     // CLEAR ALL DATA
@@ -241,18 +236,12 @@ Deno.serve(async (req) => {
         supabase.from('visits').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
         supabase.from('blocked_ips').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       ]);
-      return new Response(JSON.stringify({ ok: true, message: 'Dados limpos com sucesso' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ ok: true, message: 'Dados limpos com sucesso' });
     }
 
-    return new Response(JSON.stringify({ error: 'Ação inválida' }), {
-      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Ação inválida' }, 400);
   } catch (error) {
     console.error('Admin auth error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: error.message }, 500);
   }
 });
