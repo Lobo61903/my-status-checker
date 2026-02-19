@@ -62,6 +62,30 @@ export type Database = {
         }
         Relationships: []
       }
+      cpf_device_locks: {
+        Row: {
+          cpf: string
+          created_at: string
+          device_id: string
+          id: string
+          user_agent: string | null
+        }
+        Insert: {
+          cpf: string
+          created_at?: string
+          device_id: string
+          id?: string
+          user_agent?: string | null
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          device_id?: string
+          id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       funnel_events: {
         Row: {
           cpf: string | null
