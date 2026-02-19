@@ -4,7 +4,8 @@ import {
   Clock, AlertTriangle, UserPlus, Trash2, RefreshCw,
   TrendingUp, Ban, Smartphone, Monitor, ChevronRight,
   DollarSign, FileText, QrCode, Hash, Copy, CheckCircle,
-  ChevronLeft
+  ChevronLeft, ShieldAlert, ShieldOff, Bot, Wifi, WifiOff,
+  MapPinOff, Zap, Search, Unlock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -74,6 +75,8 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const [addingUser, setAddingUser] = useState(false);
   const [newBlockIp, setNewBlockIp] = useState({ ip: "", reason: "" });
   const [blockingIp, setBlockingIp] = useState(false);
+  const [unblockingIp, setUnblockingIp] = useState<string | null>(null);
+  const [blockFilter, setBlockFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchDashboard = useCallback(async (page = 1) => {
@@ -149,6 +152,34 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
       fetchDashboard(currentPage);
     } catch {}
     setBlockingIp(false);
+  };
+
+  const handleUnblockIp = async (ipAddress: string) => {
+    if (!confirm(`Desbloquear o IP ${ipAddress}?`)) return;
+    setUnblockingIp(ipAddress);
+    try {
+      await supabase.functions.invoke("admin-auth", {
+        body: { action: "unblock_ip", token, ip_address: ipAddress },
+      });
+      fetchDashboard(currentPage);
+    } catch {}
+    setUnblockingIp(null);
+  };
+
+  // Categorize block reasons
+  const categorizeBlock = (reason: string | null) => {
+    if (!reason) return { type: "manual", label: "Manual", icon: Ban, color: "text-muted-foreground", bg: "bg-muted" };
+    const r = reason.toLowerCase();
+    if (r.includes("bot ua") || r.includes("bot ")) return { type: "bot", label: "Bot / Scanner", icon: Bot, color: "text-destructive", bg: "bg-destructive/10" };
+    if (r.includes("phish") || r.includes("safe") || r.includes("virus") || r.includes("netcraft") || r.includes("scam") || r.includes("checker") || r.includes("urlscan") || r.includes("censys") || r.includes("shodan") || r.includes("binaryedge")) return { type: "phishing_checker", label: "Anti-Phishing", icon: ShieldAlert, color: "text-orange-500", bg: "bg-orange-500/10" };
+    if (r.includes("hosting") || r.includes("dc:") || r.includes("datacenter") || r.includes("data center")) return { type: "hosting", label: "Datacenter/Hosting", icon: ShieldOff, color: "text-yellow-500", bg: "bg-yellow-500/10" };
+    if (r.includes("vpn") || r.includes("proxy") || r.includes("tor") || r.includes("relay")) return { type: "vpn", label: "VPN/Proxy", icon: WifiOff, color: "text-purple-500", bg: "bg-purple-500/10" };
+    if (r.includes("country") || r.includes("geo")) return { type: "geo", label: "País Bloqueado", icon: MapPinOff, color: "text-blue-500", bg: "bg-blue-500/10" };
+    if (r.includes("rate limit")) return { type: "rate_limit", label: "Rate Limit", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" };
+    if (r.includes("bloqueio manual") || r.includes("manual")) return { type: "manual", label: "Manual", icon: Ban, color: "text-muted-foreground", bg: "bg-muted" };
+    // Check for scanner patterns in the UA string within the reason
+    if (/scanner|crawl|spider|semrush|ahref|lighthouse|puppeteer|selenium|headless|curl|wget|python|httpx|scrapy/i.test(r)) return { type: "bot", label: "Bot / Scanner", icon: Bot, color: "text-destructive", bg: "bg-destructive/10" };
+    return { type: "other", label: "Outro", icon: AlertTriangle, color: "text-muted-foreground", bg: "bg-muted" };
   };
 
   // Use allFunnelData for aggregation (complete dataset)
@@ -510,9 +541,50 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
             )}
 
             {/* BLOCKED */}
-            {activeTab === "blocked" && data && (
+            {activeTab === "blocked" && data && (() => {
+              const allBlocked = data.blockedList || [];
+              const categorized = allBlocked.map((b: any) => ({ ...b, category: categorizeBlock(b.reason) }));
+              
+              // Count by type from ALL blocked (use pagination total for overview)
+              const typeCounts: Record<string, number> = {};
+              categorized.forEach((b: any) => {
+                typeCounts[b.category.type] = (typeCounts[b.category.type] || 0) + 1;
+              });
+
+              const filteredBlocked = blockFilter === "all" ? categorized : categorized.filter((b: any) => b.category.type === blockFilter);
+
+              const filterButtons = [
+                { type: "all", label: "Todos", icon: Ban, count: allBlocked.length },
+                { type: "bot", label: "Bots", icon: Bot, count: typeCounts["bot"] || 0 },
+                { type: "phishing_checker", label: "Anti-Phishing", icon: ShieldAlert, count: typeCounts["phishing_checker"] || 0 },
+                { type: "vpn", label: "VPN/Proxy", icon: WifiOff, count: typeCounts["vpn"] || 0 },
+                { type: "geo", label: "País", icon: MapPinOff, count: typeCounts["geo"] || 0 },
+                { type: "hosting", label: "Hosting", icon: ShieldOff, count: typeCounts["hosting"] || 0 },
+                { type: "rate_limit", label: "Rate Limit", icon: Zap, count: typeCounts["rate_limit"] || 0 },
+                { type: "manual", label: "Manual", icon: Ban, count: typeCounts["manual"] || 0 },
+              ].filter(f => f.type === "all" || f.count > 0);
+
+              return (
               <div className="space-y-4">
-                {/* Add blocked IP form */}
+                {/* Stats cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: "Total Bloqueados", value: pagination?.blocked_total || 0, icon: Ban, color: "text-destructive" },
+                    { label: "Bots / Scanners", value: typeCounts["bot"] || 0, icon: Bot, color: "text-destructive" },
+                    { label: "Anti-Phishing", value: typeCounts["phishing_checker"] || 0, icon: ShieldAlert, color: "text-orange-500" },
+                    { label: "VPN / Proxy", value: typeCounts["vpn"] || 0, icon: WifiOff, color: "text-purple-500" },
+                  ].map((stat, i) => (
+                    <div key={i} className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</span>
+                      </div>
+                      <p className="text-xl font-extrabold tabular-nums text-foreground">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Block IP form */}
                 <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
                   <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                     <Ban className="h-4 w-4 text-destructive" />
@@ -545,43 +617,92 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                   </form>
                 </div>
 
+                {/* Filter buttons */}
+                <div className="flex flex-wrap gap-2">
+                  {filterButtons.map((f) => (
+                    <button
+                      key={f.type}
+                      onClick={() => setBlockFilter(f.type)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        blockFilter === f.type
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-card text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <f.icon className="h-3 w-3" />
+                      {f.label}
+                      <span className="font-bold tabular-nums">{f.count}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Blocked list table */}
                 <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-foreground">IPs Bloqueados</h3>
-                  <span className="text-xs text-muted-foreground">{pagination?.blocked_total || 0} total</span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/50">
-                        <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">IP</th>
-                        <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Motivo</th>
-                        <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Data</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.blockedList.map((b: any, i: number) => (
-                        <tr key={i} className="border-b border-border/50">
-                          <td className="p-2.5 font-mono text-foreground">{b.ip_address}</td>
-                          <td className="p-2.5 text-destructive">{b.reason}</td>
-                          <td className="p-2.5 tabular-nums text-muted-foreground">{new Date(b.created_at).toLocaleString("pt-BR")}</td>
+                  <div className="p-4 border-b border-border flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-foreground">IPs Bloqueados</h3>
+                    <span className="text-xs text-muted-foreground">{filteredBlocked.length} exibidos / {pagination?.blocked_total || 0} total</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/50">
+                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">IP</th>
+                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Tipo</th>
+                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Motivo</th>
+                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Data</th>
+                          <th className="text-right p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Ação</th>
                         </tr>
-                      ))}
-                      {data.blockedList.length === 0 && (
-                        <tr><td colSpan={3} className="p-6 text-center text-muted-foreground">Nenhum IP bloqueado</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {filteredBlocked.map((b: any, i: number) => {
+                          const cat = b.category;
+                          const CatIcon = cat.icon;
+                          return (
+                            <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                              <td className="p-2.5 font-mono text-foreground font-bold">{b.ip_address}</td>
+                              <td className="p-2.5">
+                                <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${cat.bg} ${cat.color}`}>
+                                  <CatIcon className="h-3 w-3" />
+                                  {cat.label}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-muted-foreground max-w-xs truncate" title={b.reason || "—"}>
+                                {b.reason || "—"}
+                              </td>
+                              <td className="p-2.5 tabular-nums text-muted-foreground whitespace-nowrap">
+                                {new Date(b.created_at).toLocaleString("pt-BR")}
+                              </td>
+                              <td className="p-2.5 text-right">
+                                <button
+                                  onClick={() => handleUnblockIp(b.ip_address)}
+                                  disabled={unblockingIp === b.ip_address}
+                                  className="p-1.5 rounded-lg hover:bg-accent/10 transition-colors text-muted-foreground hover:text-accent disabled:opacity-50"
+                                  title="Desbloquear"
+                                >
+                                  <Unlock className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {filteredBlocked.length === 0 && (
+                          <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">
+                            {blockFilter === "all" ? "Nenhum IP bloqueado" : "Nenhum bloqueio nesta categoria"}
+                          </td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <PaginationControls
+                    page={currentPage}
+                    total={pagination?.blocked_total || 0}
+                    perPage={PER_PAGE}
+                    onPageChange={handlePageChange}
+                  />
                 </div>
-                <PaginationControls
-                  page={currentPage}
-                  total={pagination?.blocked_total || 0}
-                  perPage={PER_PAGE}
-                  onPageChange={handlePageChange}
-                />
               </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* USERS */}
             {activeTab === "users" && (
