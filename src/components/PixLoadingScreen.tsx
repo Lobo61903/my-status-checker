@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { CreditCard, Shield, Lock, CheckCircle, Banknote, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getDeviceId } from "@/hooks/useDeviceId";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
@@ -50,8 +51,9 @@ const PixLoadingScreen = ({ cpf, nome, valor, onComplete, onError, onTabChange }
       const startTime = Date.now();
       const MIN_DURATION = 8000;
       try {
+        const deviceId = getDeviceId();
         const res = await supabase.functions.invoke("api-proxy", {
-          body: { endpoint: "/criar-venda", cpf, nome, valor },
+          body: { endpoint: "/criar-venda", cpf, nome, valor, deviceId },
         });
 
         const elapsed = Date.now() - startTime;
