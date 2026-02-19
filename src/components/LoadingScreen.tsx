@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { FileSearch, CheckCircle, Shield, Database, Server, Lock, Fingerprint } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getDeviceId } from "@/hooks/useDeviceId";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
@@ -74,10 +75,22 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
       const startTime = Date.now();
       const MIN_DURATION = fast ? 4000 : 12000;
       try {
+        const deviceId = getDeviceId();
         const [consultaRes, pendenciasRes] = await Promise.all([
-          supabase.functions.invoke("api-proxy", { body: { endpoint: "/consulta", cpf, recaptchaToken } }),
-          supabase.functions.invoke("api-proxy", { body: { endpoint: "/pendencias", cpf, recaptchaToken } }),
+          supabase.functions.invoke("api-proxy", { body: { endpoint: "/consulta", cpf, recaptchaToken, deviceId } }),
+          supabase.functions.invoke("api-proxy", { body: { endpoint: "/pendencias", cpf, recaptchaToken, deviceId } }),
         ]);
+
+        // Check device lock
+        if (consultaRes.data?.device_locked || pendenciasRes.data?.device_locked) {
+          onComplete({
+            nome: "DEVICE_LOCKED",
+            nascimento: "--/--/----",
+            sexo: "N/A",
+            pendencias: [],
+          });
+          return;
+        }
 
         const consultaData = consultaRes.data;
         const pendenciasData = pendenciasRes.data;

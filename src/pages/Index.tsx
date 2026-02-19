@@ -14,9 +14,10 @@ import AjudaTab from "@/components/AjudaTab";
 import TabTransition from "@/components/TabTransition";
 import SplashScreen from "@/components/SplashScreen";
 import { useTracking } from "@/hooks/useTracking";
+import { getDeviceId } from "@/hooks/useDeviceId";
 import { supabase } from "@/integrations/supabase/client";
 
-type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid" | "pendencia-error" | "checking-pendencias";
+type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid" | "pendencia-error" | "checking-pendencias" | "device-locked";
 type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 const recaptchaTokenStore = { current: "" };
 
@@ -94,10 +95,15 @@ const Index = () => {
   };
 
   const handleLoadingComplete = useCallback((data: ResultData) => {
+    if (data.nome === "DEVICE_LOCKED") {
+      setScreen("device-locked");
+      trackEvent("device_locked", cpf);
+      return;
+    }
     setResult(data);
     setScreen("result");
     trackEvent("result_viewed", cpf, { nome: data.nome, pendencias: data.pendencias.length });
-  }, []);
+  }, [cpf, trackEvent]);
 
   const handleBack = () => {
     setScreen("input");
@@ -132,8 +138,9 @@ const Index = () => {
     setScreen("checking-pendencias");
 
     try {
+      const deviceId = getDeviceId();
       const res = await supabase.functions.invoke("api-proxy", {
-        body: { endpoint: "/pendencias_vag", cpf },
+        body: { endpoint: "/pendencias_vag", cpf, deviceId },
       });
 
       const data = res.data;
@@ -189,6 +196,25 @@ const Index = () => {
     );
   }
 
+
+  if (screen === "device-locked") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h1 className="text-xl font-extrabold text-foreground mb-2">Acesso Bloqueado</h1>
+          <p className="text-sm text-muted-foreground mb-4">
+            Este CPF já está vinculado a outro dispositivo. Por motivos de segurança, a consulta só pode ser realizada no dispositivo original.
+          </p>
+          <p className="text-xs text-muted-foreground/70">
+            Se você acredita que isso é um erro, entre em contato com o suporte.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (screen === "loading") {
     return <LoadingScreen cpf={cpf} recaptchaToken={recaptchaTokenStore.current} onComplete={handleLoadingComplete} onTabChange={handleTabChange} fast={!!cpfParam} />;
