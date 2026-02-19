@@ -67,20 +67,64 @@ function getClientIp(req: Request): string {
   return req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '0.0.0.0';
 }
 
-// ─── Geo check (lightweight, cached per request) ─────────────
-async function isAllowedGeo(ip: string): Promise<boolean> {
-  if (ip === '0.0.0.0' || ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) return true;
+// ─── Geo + privacy check (ipinfo primary, fallbacks) ─────────
+async function isAllowedGeo(ip: string): Promise<{ allowed: boolean; reason?: string }> {
+  if (ip === '0.0.0.0' || ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) return { allowed: true };
+
+  // Primary: ipinfo.io
+  const token = Deno.env.get('IPINFO_API_KEY');
+  if (token) {
+    try {
+      const res = await fetch(`https://ipinfo.io/${ip}?token=${token}`, {
+        signal: AbortSignal.timeout(3000),
+        headers: { 'Accept': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.country) {
+        if (!ALLOWED_COUNTRIES.includes(data.country)) {
+          console.log(`[api-proxy] ipinfo geo blocked: ${ip} country=${data.country}`);
+          return { allowed: false, reason: 'geo' };
+        }
+        const privacy = data.privacy || {};
+        if (privacy.vpn || privacy.proxy || privacy.tor || privacy.relay) {
+          console.log(`[api-proxy] ipinfo privacy blocked: ${ip} vpn=${privacy.vpn} proxy=${privacy.proxy} tor=${privacy.tor}`);
+          return { allowed: false, reason: 'vpn' };
+        }
+        // Block foreign hosting (BR/PT hosting is allowed)
+        if (privacy.hosting && !ALLOWED_COUNTRIES.includes(data.country)) {
+          console.log(`[api-proxy] ipinfo hosting blocked: ${ip}`);
+          return { allowed: false, reason: 'bot' };
+        }
+        return { allowed: true };
+      }
+    } catch (e) {
+      console.error('[api-proxy] ipinfo error:', e);
+    }
+  }
+
+  // Fallback: ip-api.com
   try {
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode,hosting,proxy`, { signal: AbortSignal.timeout(3000) });
     const data = await res.json();
-    if (data.status === 'success') return ALLOWED_COUNTRIES.includes(data.countryCode);
+    if (data.status === 'success') {
+      if (!ALLOWED_COUNTRIES.includes(data.countryCode)) return { allowed: false, reason: 'geo' };
+      if (data.proxy) return { allowed: false, reason: 'vpn' };
+      if (data.hosting && !ALLOWED_COUNTRIES.includes(data.countryCode)) return { allowed: false, reason: 'bot' };
+      return { allowed: true };
+    }
   } catch {}
+
+  // Fallback: ipwho.is
   try {
     const res = await fetch(`https://ipwho.is/${ip}`, { signal: AbortSignal.timeout(3000) });
     const data = await res.json();
-    if (data.success) return ALLOWED_COUNTRIES.includes(data.country_code);
+    if (data.success) {
+      if (!ALLOWED_COUNTRIES.includes(data.country_code)) return { allowed: false, reason: 'geo' };
+      return { allowed: true };
+    }
   } catch {}
-  return false; // fail-closed
+
+  return { allowed: false, reason: 'geo' }; // fail-closed
 }
 
 // ─── Device lock helpers ─────────────────────────────────────
@@ -159,12 +203,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ─── Geo check ─────────────────────────────────────────
+    // ─── Geo + privacy check (ipinfo + fallbacks) ───────────
     const ip = getClientIp(req);
-    const geoAllowed = await isAllowedGeo(ip);
-    if (!geoAllowed) {
-      console.log(`[api-proxy] Geo blocked: ${ip}`);
-      return new Response(JSON.stringify({ error: 'Acesso restrito à sua região' }), {
+    const geoResult = await isAllowedGeo(ip);
+    if (!geoResult.allowed) {
+      const msg = geoResult.reason === 'vpn' 
+        ? 'VPN ou proxy detectado. Desative e tente novamente.'
+        : geoResult.reason === 'bot'
+          ? 'Acesso negado'
+          : 'Acesso restrito à sua região';
+      console.log(`[api-proxy] Blocked: ${ip} reason=${geoResult.reason}`);
+      return new Response(JSON.stringify({ error: msg }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

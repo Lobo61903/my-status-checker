@@ -137,9 +137,82 @@ interface GeoData {
   isp: string;
   org: string;
   hosting: boolean;
+  vpn?: boolean;
+  proxy?: boolean;
+  tor?: boolean;
+  relay?: boolean;
+  asn?: string;
+  asn_type?: string;
+  company_type?: string;
 }
 
-// Primary: ip-api.com (supports HTTP, 45 req/min free)
+// ─── PRIMARY: ipinfo.io (Core plan) ──────────────────────────
+async function getGeoFromIpinfo(ip: string): Promise<GeoData | null> {
+  const token = Deno.env.get('IPINFO_API_KEY');
+  if (!token) {
+    console.log('[ipinfo] No API key configured');
+    return null;
+  }
+  try {
+    const res = await fetch(`https://ipinfo.io/${ip}?token=${token}`, {
+      signal: AbortSignal.timeout(5000),
+      headers: { 'Accept': 'application/json' },
+    });
+    const data = await res.json();
+    console.log(`[ipinfo] IP=${ip} country=${data.country} city=${data.city} org=${data.org} privacy=${JSON.stringify(data.privacy)} asn=${JSON.stringify(data.asn)} company=${JSON.stringify(data.company)}`);
+
+    if (!data.country) return null;
+
+    // Parse lat/lon from "loc" field "lat,lon"
+    let lat = 0, lon = 0;
+    if (data.loc) {
+      const parts = data.loc.split(',');
+      lat = parseFloat(parts[0]) || 0;
+      lon = parseFloat(parts[1]) || 0;
+    }
+
+    // Privacy detection (Core plan includes privacy data)
+    const privacy = data.privacy || {};
+    const isVpn = privacy.vpn === true;
+    const isProxy = privacy.proxy === true;
+    const isTor = privacy.tor === true;
+    const isRelay = privacy.relay === true;
+    const isHosting = privacy.hosting === true;
+
+    // ASN info
+    const asnData = data.asn || {};
+    const asnType = asnData.type || ''; // isp, hosting, business, education
+    const companyData = data.company || {};
+    const companyType = companyData.type || '';
+
+    // Determine org/isp
+    const orgStr = data.org || asnData.name || '';
+
+    return {
+      country_code: data.country,
+      country_name: data.country, // ipinfo returns code only, will be enriched
+      region: data.region || '',
+      city: data.city || '',
+      latitude: lat,
+      longitude: lon,
+      isp: orgStr,
+      org: orgStr,
+      hosting: isHosting || asnType === 'hosting',
+      vpn: isVpn,
+      proxy: isProxy,
+      tor: isTor,
+      relay: isRelay,
+      asn: asnData.asn || '',
+      asn_type: asnType,
+      company_type: companyType,
+    };
+  } catch (e) {
+    console.error('[ipinfo] Error:', e);
+  }
+  return null;
+}
+
+// ─── FALLBACK 1: ip-api.com (free, 45 req/min) ──────────────
 async function getGeoFromIpApi(ip: string): Promise<GeoData | null> {
   try {
     const res = await fetch(
@@ -168,22 +241,17 @@ async function getGeoFromIpApi(ip: string): Promise<GeoData | null> {
   return null;
 }
 
-// Fallback: ipapi.co (HTTPS, 1000/day free)
+// ─── FALLBACK 2: ipapi.co ────────────────────────────────────
 async function getGeoFromIpapiCo(ip: string): Promise<GeoData | null> {
   try {
     const res = await fetch(
       `https://ipapi.co/${ip}/json/`,
-      { 
-        signal: AbortSignal.timeout(5000),
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      }
+      { signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'Mozilla/5.0' } }
     );
     const data = await res.json();
     console.log(`[ipapi.co] IP=${ip} country=${data.country_code} org=${data.org}`);
     if (data.country_code) {
-      const isHosting = /hosting|cloud|server|datacenter|data center|vps|dedicated/i.test(
-        `${data.org || ''} ${data.asn || ''}`
-      );
+      const isHosting = /hosting|cloud|server|datacenter|data center|vps|dedicated/i.test(`${data.org || ''} ${data.asn || ''}`);
       return {
         country_code: data.country_code,
         country_name: data.country_name || '',
@@ -202,13 +270,10 @@ async function getGeoFromIpapiCo(ip: string): Promise<GeoData | null> {
   return null;
 }
 
-// Fallback 2: ipwho.is (HTTPS, free, no key needed)
+// ─── FALLBACK 3: ipwho.is ────────────────────────────────────
 async function getGeoFromIpwhois(ip: string): Promise<GeoData | null> {
   try {
-    const res = await fetch(
-      `https://ipwho.is/${ip}`,
-      { signal: AbortSignal.timeout(5000) }
-    );
+    const res = await fetch(`https://ipwho.is/${ip}`, { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
     console.log(`[ipwho.is] IP=${ip} success=${data.success} country=${data.country_code}`);
     if (data.success) {
@@ -230,29 +295,39 @@ async function getGeoFromIpwhois(ip: string): Promise<GeoData | null> {
   return null;
 }
 
-// Try multiple geo providers with fallback
+// ─── Geo provider chain: ipinfo → ip-api → ipapi.co → ipwho.is
 async function getGeoData(ip: string): Promise<GeoData | null> {
-  // Skip private/local IPs
   if (ip === '0.0.0.0' || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) {
     console.log(`[geo] Skipping private IP: ${ip}`);
     return null;
   }
 
-  let geo = await getGeoFromIpApi(ip);
+  // Primary: ipinfo.io (paid, most accurate)
+  let geo = await getGeoFromIpinfo(ip);
   if (geo) return geo;
 
-  console.log('[geo] Primary failed, trying ipapi.co...');
+  console.log('[geo] ipinfo failed, trying ip-api.com...');
+  geo = await getGeoFromIpApi(ip);
+  if (geo) return geo;
+
+  console.log('[geo] ip-api failed, trying ipapi.co...');
   geo = await getGeoFromIpapiCo(ip);
   if (geo) return geo;
 
-  console.log('[geo] Secondary failed, trying ipwho.is...');
+  console.log('[geo] ipapi.co failed, trying ipwho.is...');
   geo = await getGeoFromIpwhois(ip);
   return geo;
 }
 
-// VPN detection heuristics
+// VPN/Proxy/Tor detection — uses ipinfo privacy data + ISP heuristics
 function detectVpn(geo: GeoData, timezone: string | undefined): boolean {
-  // Common VPN/proxy ISP names
+  // ipinfo.io privacy detection (most accurate, from Core plan)
+  if (geo.vpn) { console.log(`[vpn] ipinfo: VPN detected for ${geo.isp}`); return true; }
+  if (geo.proxy) { console.log(`[vpn] ipinfo: Proxy detected for ${geo.isp}`); return true; }
+  if (geo.tor) { console.log(`[vpn] ipinfo: Tor detected`); return true; }
+  if (geo.relay) { console.log(`[vpn] ipinfo: Relay detected for ${geo.isp}`); return true; }
+
+  // Fallback: ISP name heuristics (when ipinfo data not available)
   const vpnIsps = [
     /vpn/i, /proxy/i, /tunnel/i, /nord/i, /express/i, /surfshark/i,
     /cyberghost/i, /private internet/i, /mullvad/i, /proton/i,
