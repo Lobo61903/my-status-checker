@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Copy, CheckCircle, Clock, Shield, QrCode, ArrowLeft, AlertTriangle, Smartphone, Lock, Landmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTracking } from "@/hooks/useTracking";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
@@ -26,6 +27,7 @@ const PixPaymentScreen = ({ nome, cpf, valor, pixCopiaCola, transactionId, onBac
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30 * 60);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { trackEvent } = useTracking();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -72,6 +74,7 @@ const PixPaymentScreen = ({ nome, cpf, valor, pixCopiaCola, transactionId, onBac
       document.body.removeChild(textarea);
     }
     setCopied(true);
+    trackEvent("pix_copied", cpf, { valor, transactionId });
     setTimeout(() => setCopied(false), 3000);
   };
 
