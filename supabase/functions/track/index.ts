@@ -299,9 +299,10 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Block datacenter/hosting IPs
-      if (geo.hosting) {
-        console.log(`[track] Hosting IP blocked: ${ip} (${geo.isp})`);
+      // Block datacenter/hosting IPs ONLY if from non-allowed countries
+      // Many Brazilian ISPs are incorrectly classified as hosting/datacenter
+      if (geo.hosting && !ALLOWED_COUNTRIES.includes(geo.country_code)) {
+        console.log(`[track] Foreign hosting IP blocked: ${ip} (${geo.isp}) country=${geo.country_code}`);
         await supabase.from('blocked_ips').upsert(
           { ip_address: ip, reason: `Hosting/DC: ${geo.isp} (${geo.org})` },
           { onConflict: 'ip_address' }
