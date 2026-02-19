@@ -3,7 +3,7 @@ import {
   Users, Eye, BarChart3, Shield, LogOut, MapPin, Globe,
   Clock, AlertTriangle, UserPlus, Trash2, RefreshCw,
   TrendingUp, Ban, Smartphone, Monitor, ChevronRight,
-  DollarSign, FileText, QrCode, Hash
+  DollarSign, FileText, QrCode, Hash, Copy, CheckCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -104,7 +104,7 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   };
 
   // Funnel calculation
-  const funnelSteps = ["page_view", "cpf_submitted", "result_viewed", "darf_viewed", "pix_generating", "pix_generated"];
+  const funnelSteps = ["page_view", "cpf_submitted", "result_viewed", "darf_viewed", "pix_generating", "pix_generated", "pix_copied", "payment_confirmed"];
   const funnelLabels: Record<string, string> = {
     page_view: "Visualizações",
     cpf_submitted: "CPF Enviado",
@@ -112,6 +112,8 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
     darf_viewed: "DARF Visto",
     pix_generating: "PIX Gerando",
     pix_generated: "PIX Gerado",
+    pix_copied: "PIX Copiado",
+    payment_confirmed: "Pagamento Confirmado",
   };
   const funnelCounts = funnelSteps.map((step) => ({
     step,
@@ -127,6 +129,8 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const cpfSubmittedCount = data?.funnelData?.filter((e: any) => e.event_type === "cpf_submitted").length || 0;
   const darfViewedCount = data?.funnelData?.filter((e: any) => e.event_type === "darf_viewed").length || 0;
   const pixGeneratedCount = data?.funnelData?.filter((e: any) => e.event_type === "pix_generated").length || 0;
+  const pixCopiedCount = data?.funnelData?.filter((e: any) => e.event_type === "pix_copied").length || 0;
+  const paymentConfirmedCount = data?.funnelData?.filter((e: any) => e.event_type === "payment_confirmed").length || 0;
 
   // Total value: get the max valor per session from any event that has it
   const sessionValues: Record<string, number> = {};
@@ -231,6 +235,8 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                     { label: "CPFs Únicos", value: uniqueCpfs.size.toLocaleString(), icon: Users, color: "text-info" },
                     { label: "DARFs Gerados", value: darfViewedCount.toLocaleString(), icon: FileText, color: "text-warning" },
                     { label: "PIX Gerados", value: pixGeneratedCount.toLocaleString(), icon: QrCode, color: "text-accent" },
+                    { label: "PIX Copiados", value: pixCopiedCount.toLocaleString(), icon: Copy, color: "text-primary", highlight: true },
+                    { label: "Pagamentos", value: paymentConfirmedCount.toLocaleString(), icon: CheckCircle, color: "text-accent", highlight: true },
                     { label: "Valor Total Gerado", value: formatCurrency(totalValueGenerated), icon: DollarSign, color: "text-accent", highlight: true },
                     { label: "Total Eventos", value: data.stats.total_events.toLocaleString(), icon: BarChart3, color: "text-muted-foreground" },
                     { label: "IPs Bloqueados", value: data.stats.total_blocked.toLocaleString(), icon: Ban, color: "text-destructive" },
