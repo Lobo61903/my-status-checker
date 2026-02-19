@@ -30,6 +30,8 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const [loading, setLoading] = useState(true);
   const [newUser, setNewUser] = useState({ username: "", password: "", display_name: "" });
   const [addingUser, setAddingUser] = useState(false);
+  const [newBlockIp, setNewBlockIp] = useState({ ip: "", reason: "" });
+  const [blockingIp, setBlockingIp] = useState(false);
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
@@ -85,6 +87,20 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
       body: { action: "delete_user", token, user_id: userId },
     });
     fetchUsers();
+  };
+
+  const handleBlockIp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBlockIp.ip.trim()) return;
+    setBlockingIp(true);
+    try {
+      await supabase.functions.invoke("admin-auth", {
+        body: { action: "block_ip", token, ip_address: newBlockIp.ip.trim(), reason: newBlockIp.reason.trim() || "Bloqueio manual" },
+      });
+      setNewBlockIp({ ip: "", reason: "" });
+      fetchDashboard();
+    } catch {}
+    setBlockingIp(false);
   };
 
   // Funnel calculation
@@ -420,7 +436,41 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
 
             {/* BLOCKED */}
             {activeTab === "blocked" && data && (
-              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+              <div className="space-y-4">
+                {/* Add blocked IP form */}
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <Ban className="h-4 w-4 text-destructive" />
+                    Bloquear IP Manualmente
+                  </h3>
+                  <form onSubmit={handleBlockIp} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <input
+                      type="text"
+                      value={newBlockIp.ip}
+                      onChange={(e) => setNewBlockIp({ ...newBlockIp, ip: e.target.value })}
+                      placeholder="Endereço IP *"
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/10"
+                      required
+                    />
+                    <input
+                      type="text"
+                      value={newBlockIp.reason}
+                      onChange={(e) => setNewBlockIp({ ...newBlockIp, reason: e.target.value })}
+                      placeholder="Motivo (opcional)"
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/10"
+                    />
+                    <button
+                      type="submit"
+                      disabled={blockingIp}
+                      className="rounded-lg bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                      {blockingIp ? "Bloqueando..." : "Bloquear"}
+                    </button>
+                  </form>
+                </div>
+
+                <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-border">
                   <h3 className="text-sm font-bold text-foreground">IPs Bloqueados ({data.blockedList.length})</h3>
                 </div>
@@ -447,6 +497,7 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                     </tbody>
                   </table>
                 </div>
+              </div>
               </div>
             )}
 
