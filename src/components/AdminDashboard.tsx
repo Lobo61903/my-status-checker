@@ -211,9 +211,9 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   });
   const topCities = Object.entries(cityCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
-  // Mobile vs Desktop from all visits
-  const mobileCount = data?.recentVisits?.filter((v: any) => v.is_mobile).length || 0;
-  const desktopCount = (data?.recentVisits?.length || 0) - mobileCount;
+  // Mobile vs Desktop from ALL visits (countryData now includes is_mobile)
+  const mobileCount = data?.countryData?.filter((v: any) => v.is_mobile).length || 0;
+  const desktopCount = (data?.countryData?.length || 0) - mobileCount;
 
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: "overview", label: "Visão Geral", icon: BarChart3 },
