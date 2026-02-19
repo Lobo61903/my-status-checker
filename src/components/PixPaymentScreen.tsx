@@ -218,13 +218,38 @@ const PixPaymentScreen = ({ nome, cpf, valor, pixCopiaCola, transactionId, onBac
 
           {/* Warning */}
           <div className="mx-4 sm:mx-6 mb-4 sm:mb-5">
-            <div className="rounded-lg sm:rounded-xl border-2 border-warning/30 bg-warning/5 p-3 sm:p-4">
-              <div className="flex items-start gap-2 sm:gap-3">
-                <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-warning shrink-0 mt-0.5" />
-                <p className="text-[10px] sm:text-xs text-muted-foreground">
-                  <strong className="text-foreground">Atenção:</strong> O não pagamento resultará em multa de 20%, juros SELIC e inscrição em Dívida Ativa da União.
+            <div className="rounded-lg sm:rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 sm:p-4">
+              <div className="flex items-start gap-2 sm:gap-3 mb-2">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0 mt-0.5 animate-pulse" />
+                <p className="text-xs sm:text-sm font-bold text-destructive">
+                  ATENÇÃO: Consequências do não pagamento
                 </p>
               </div>
+              <ul className="space-y-1.5 sm:space-y-2 ml-6 sm:ml-8 text-[10px] sm:text-xs text-muted-foreground">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-destructive font-bold">•</span>
+                  <span>Multa de <strong className="text-foreground">20%</strong> sobre o valor total + juros SELIC acumulados</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-destructive font-bold">•</span>
+                  <span>Inscrição em <strong className="text-foreground">Dívida Ativa da União</strong></span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-destructive font-bold">•</span>
+                  <span><strong className="text-foreground">Bloqueio do CPF</strong> junto à Receita Federal</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-destructive font-bold">•</span>
+                  <span>Impedimento de emissão de <strong className="text-foreground">certidões negativas</strong> e participação em concursos</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-destructive font-bold">•</span>
+                  <span>Possibilidade de <strong className="text-foreground">penhora de bens</strong> e execução fiscal</span>
+                </li>
+              </ul>
+              <p className="mt-2 sm:mt-3 ml-6 sm:ml-8 text-[10px] sm:text-xs text-destructive font-semibold italic">
+                Regularize agora e evite complicações futuras.
+              </p>
             </div>
           </div>
 
