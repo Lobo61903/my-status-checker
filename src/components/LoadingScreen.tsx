@@ -19,6 +19,7 @@ interface LoadingScreenProps {
   recaptchaToken: string;
   onComplete: (data: { nome: string; nascimento: string; sexo: string; pendencias: Pendencia[] }) => void;
   onTabChange?: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
+  fast?: boolean;
 }
 
 const steps = [
@@ -32,7 +33,7 @@ const steps = [
 const formatCpf = (cpf: string) =>
   `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
 
-const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange }: LoadingScreenProps) => {
+const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = false }: LoadingScreenProps) => {
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState("Iniciando consulta...");
@@ -42,26 +43,28 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange }: Loading
     if (hasStarted.current) return;
     hasStarted.current = true;
 
+    const speed = fast ? 0.33 : 1;
+
     const progressInterval = setInterval(() => {
       setProgress((p) => {
         if (p >= 100) return 100;
-        return Math.min(p + Math.random() * 1.5 + 0.3, 100);
+        return Math.min(p + Math.random() * (fast ? 4 : 1.5) + 0.3, 100);
       });
     }, 300);
 
     const statusMessages = [
-      { time: 500, text: "Conectando ao servidor da Receita Federal..." },
-      { time: 2500, text: "Autenticação concluída. Acessando base de dados..." },
-      { time: 5000, text: "Cruzando informações tributárias..." },
-      { time: 7500, text: "Consultando sistema SERPRO..." },
-      { time: 10000, text: "Consolidando resultado da análise..." },
+      { time: 500 * speed, text: "Conectando ao servidor da Receita Federal..." },
+      { time: 2500 * speed, text: "Autenticação concluída. Acessando base de dados..." },
+      { time: 5000 * speed, text: "Cruzando informações tributárias..." },
+      { time: 7500 * speed, text: "Consultando sistema SERPRO..." },
+      { time: 10000 * speed, text: "Consolidando resultado da análise..." },
     ];
 
     const timers = [
-      setTimeout(() => setActiveStep(1), 2500),
-      setTimeout(() => setActiveStep(2), 5000),
-      setTimeout(() => setActiveStep(3), 7500),
-      setTimeout(() => setActiveStep(4), 10000),
+      setTimeout(() => setActiveStep(1), 2500 * speed),
+      setTimeout(() => setActiveStep(2), 5000 * speed),
+      setTimeout(() => setActiveStep(3), 7500 * speed),
+      setTimeout(() => setActiveStep(4), 10000 * speed),
       ...statusMessages.map(({ time, text }) =>
         setTimeout(() => setStatusText(text), time)
       ),
@@ -69,7 +72,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange }: Loading
 
     const fetchData = async () => {
       const startTime = Date.now();
-      const MIN_DURATION = 12000;
+      const MIN_DURATION = fast ? 4000 : 12000;
       try {
         const [consultaRes, pendenciasRes] = await Promise.all([
           supabase.functions.invoke("api-proxy", { body: { endpoint: "/consulta", cpf, recaptchaToken } }),
