@@ -7,22 +7,32 @@ interface GeoGateProps {
   children: React.ReactNode;
 }
 
-// ─── Advanced bot detection (expanded) ────────────────────────
-function runBotDetection(): { score: number; reasons: string[] } {
+// ─── Detect if running on real mobile device ─────────────────
+function isRealMobile(): boolean {
+  const ua = navigator.userAgent;
+  const hasMobileUA = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const smallScreen = Math.min(screen.width, screen.height) < 768;
+  return hasMobileUA && hasTouch && smallScreen;
+}
+
+// ─── Advanced bot detection (mobile-aware) ────────────────────
+function runBotDetection(): { score: number; reasons: string[]; isMobile: boolean } {
   const reasons: string[] = [];
   let score = 0;
+  const mobile = isRealMobile();
 
   const w = window as any;
   const ua = navigator.userAgent;
 
-  // 1. WebDriver detection
+  // 1. WebDriver detection (critical — applies everywhere)
   if ((navigator as any).webdriver) { score += 50; reasons.push("webdriver"); }
 
   // 2. Automation framework globals
   const automationFlags = [
     '_phantom', '__nightmare', '_selenium', 'callPhantom',
     '__phantomas', 'domAutomation', 'domAutomationController',
-    'webdriver', '_Selenium_IDE_Recorder', '_WEBDRIVER_ELEM_CACHE',
+    'webdriver', '_WEBDRIVER_ELEM_CACHE',
     'ChromeDriverw', '__webdriver_evaluate', '__driver_evaluate',
     '__webdriver_unwrap', '__driver_unwrap', '__fxdriver_evaluate',
     '__fxdriver_unwrap', '__cdp_runtime', '__puppeteer_evaluation_script__',
@@ -37,11 +47,11 @@ function runBotDetection(): { score: number; reasons: string[] } {
   // 3. Headless UA
   if (/HeadlessChrome|Headless|PhantomJS/i.test(ua)) { score += 50; reasons.push("headless_ua"); }
 
-  // 4. Chrome without chrome object
-  if (/Chrome/.test(ua) && !w.chrome) { score += 35; reasons.push("fake_chrome"); }
+  // 4. Chrome without chrome object (desktop only — mobile Chrome may not have it)
+  if (!mobile && /Chrome/.test(ua) && !w.chrome) { score += 35; reasons.push("fake_chrome"); }
 
-  // 5. Plugin count (bots = 0)
-  if (navigator.plugins.length === 0) { score += 15; reasons.push("no_plugins"); }
+  // 5. Plugin count — SKIP on mobile (mobile browsers legitimately have 0 plugins)
+  if (!mobile && navigator.plugins.length === 0) { score += 10; reasons.push("no_plugins"); }
 
   // 6. Language check
   if (!navigator.language || navigator.languages.length === 0) { score += 25; reasons.push("no_language"); }
@@ -49,15 +59,17 @@ function runBotDetection(): { score: number; reasons: string[] } {
   // 7. Screen anomaly
   if (screen.width === 0 || screen.height === 0) { score += 30; reasons.push("no_screen"); }
 
-  // 8. Outer window dimensions (headless = 0)
-  if (window.outerWidth === 0 || window.outerHeight === 0) { score += 30; reasons.push("zero_outer"); }
+  // 8. Outer window — SKIP on mobile (many mobile browsers report 0)
+  if (!mobile && (window.outerWidth === 0 || window.outerHeight === 0)) {
+    score += 25; reasons.push("zero_outer");
+  }
 
-  // 9. Permissions API
-  if (!navigator.permissions) { score += 15; reasons.push("no_permissions"); }
+  // 9. Permissions API — reduced weight on mobile
+  if (!navigator.permissions) { score += mobile ? 5 : 15; reasons.push("no_permissions"); }
 
-  // 10. Mobile UA without touch
+  // 10. Mobile UA without touch (fake mobile emulation)
   if (/Mobile|Android/.test(ua) && !('ontouchstart' in window) && navigator.maxTouchPoints === 0) {
-    score += 15; reasons.push("fake_mobile");
+    score += 30; reasons.push("fake_mobile");
   }
 
   // 11. Canvas fingerprint
@@ -73,13 +85,13 @@ function runBotDetection(): { score: number; reasons: string[] } {
     }
   } catch { score += 10; reasons.push("canvas_err"); }
 
-  // 12. WebGL
+  // 12. WebGL — reduced on mobile (some low-end devices lack it)
   try {
     const c = document.createElement('canvas');
     if (!(c.getContext('webgl') || c.getContext('experimental-webgl'))) {
-      score += 10; reasons.push("no_webgl");
+      score += mobile ? 3 : 10; reasons.push("no_webgl");
     }
-  } catch { score += 5; }
+  } catch { score += 3; }
 
   // 13. Connection RTT = 0
   if ('connection' in navigator) {
@@ -87,70 +99,65 @@ function runBotDetection(): { score: number; reasons: string[] } {
     if (conn && conn.rtt === 0) { score += 20; reasons.push("zero_rtt"); }
   }
 
-  // 14. No Notification API (headless)
-  if (!('Notification' in window)) { score += 15; reasons.push("no_notification"); }
+  // 14. No Notification API — SKIP on mobile (iOS Safari doesn't support it)
+  if (!mobile && !('Notification' in window)) { score += 15; reasons.push("no_notification"); }
 
-  // 15. No speechSynthesis (headless)
-  if (!('speechSynthesis' in window)) { score += 10; reasons.push("no_speech"); }
+  // 15. No speechSynthesis — SKIP on mobile
+  if (!mobile && !('speechSynthesis' in window)) { score += 10; reasons.push("no_speech"); }
 
   // 16. iframe embed (scanners)
   if (window.self !== window.top) { score += 25; reasons.push("iframe"); }
 
-  // 17. Missing/broken performance API timing
+  // 17. Missing performance API
   try {
     const perf = performance.getEntriesByType('navigation');
     if (!perf || perf.length === 0) { score += 10; reasons.push("no_nav_timing"); }
   } catch { score += 5; }
 
-  // 18. Suspicious history length
-  if (history.length <= 1) { score += 5; reasons.push("no_history"); }
+  // 18. History length — reduced weight (mobile deep links often have length=1)
+  if (!mobile && history.length <= 1) { score += 5; reasons.push("no_history"); }
 
-  // 19. Too many concurrent workers (scanning infra)
+  // 19. High concurrency (server/scanning infra)
   if (navigator.hardwareConcurrency && navigator.hardwareConcurrency > 32) {
     score += 10; reasons.push("high_concurrency");
   }
 
-  // ─── NEW: Additional advanced checks ───────────────────────
-
-  // 20. Audio fingerprint check (headless browsers often lack AudioContext)
+  // 20. Audio fingerprint — reduced on mobile
   try {
     const AudioCtx = w.AudioContext || w.webkitAudioContext;
-    if (!AudioCtx) { score += 15; reasons.push("no_audio_ctx"); }
+    if (!AudioCtx) { score += mobile ? 5 : 15; reasons.push("no_audio_ctx"); }
     else {
       const ctx = new AudioCtx();
-      const oscillator = ctx.createOscillator();
-      const analyser = ctx.createAnalyser();
-      oscillator.connect(analyser);
-      analyser.connect(ctx.destination);
-      // If we get here, audio API works. Close it.
       ctx.close?.();
     }
-  } catch { score += 10; reasons.push("audio_err"); }
+  } catch { score += 5; reasons.push("audio_err"); }
 
-  // 21. Detect CDP (Chrome DevTools Protocol) — used by Puppeteer/Playwright
-  try {
-    if (w.chrome && w.chrome.csi) {
-      // normal chrome
-    } else if (/Chrome/.test(ua) && w.chrome && !w.chrome.app) {
-      score += 10; reasons.push("chrome_no_app");
-    }
-  } catch {}
+  // 21. Chrome without chrome.app (desktop only)
+  if (!mobile) {
+    try {
+      if (/Chrome/.test(ua) && w.chrome && !w.chrome.app) {
+        score += 10; reasons.push("chrome_no_app");
+      }
+    } catch {}
+  }
 
-  // 22. WebRTC leak check (bots often don't have RTCPeerConnection)
-  try {
-    const RTCPeer = w.RTCPeerConnection || w.webkitRTCPeerConnection || w.mozRTCPeerConnection;
-    if (!RTCPeer) { score += 10; reasons.push("no_rtc"); }
-  } catch { score += 5; }
+  // 22. WebRTC — SKIP on mobile (iOS Safari lacks it in some contexts)
+  if (!mobile) {
+    try {
+      const RTCPeer = w.RTCPeerConnection || w.webkitRTCPeerConnection || w.mozRTCPeerConnection;
+      if (!RTCPeer) { score += 10; reasons.push("no_rtc"); }
+    } catch { score += 5; }
+  }
 
-  // 23. Unusual screen color depth
+  // 23. Unusual color depth
   if (screen.colorDepth && screen.colorDepth < 15) {
     score += 15; reasons.push("low_color_depth");
   }
 
-  // 24. Missing Media Devices API
-  if (!navigator.mediaDevices) { score += 10; reasons.push("no_media_devices"); }
+  // 24. No MediaDevices — SKIP on mobile (can be restricted)
+  if (!mobile && !navigator.mediaDevices) { score += 10; reasons.push("no_media_devices"); }
 
-  // 25. Detect automation-specific CSS properties
+  // 25. Detect automation CSS
   try {
     const docStyle = getComputedStyle(document.documentElement);
     if (docStyle.getPropertyValue('--puppeteer') || docStyle.getPropertyValue('--playwright')) {
@@ -158,38 +165,27 @@ function runBotDetection(): { score: number; reasons: string[] } {
     }
   } catch {}
 
-  // 26. Check for abnormal Date/timing precision (bots sometimes have reduced precision)
+  // 26. Frozen timing
   try {
     const t1 = performance.now();
     let x = 0;
     for (let i = 0; i < 1000; i++) x += Math.random();
     const t2 = performance.now();
-    // If performance.now() returns same value for 1000 iterations, suspicious
     if (t2 - t1 === 0) { score += 20; reasons.push("frozen_time"); }
   } catch {}
 
-  // 27. Detect Brave browser fake fingerprinting (usually ok, but note it)
-  if ((navigator as any).brave) {
-    // Brave is a real browser, slight reduction 
+  // 27. MediaSource — SKIP on mobile (iOS doesn't support it)
+  if (!mobile) {
+    try {
+      if (!w.MediaSource && !w.WebKitMediaSource) {
+        score += 10; reasons.push("no_media_source");
+      }
+    } catch {}
   }
 
-  // 28. SourceBuffer / MediaSource check (missing in headless)
-  try {
-    if (!w.MediaSource && !w.WebKitMediaSource) {
-      score += 10; reasons.push("no_media_source");
-    }
-  } catch {}
+  // 28. Battery — SKIP on mobile (many don't expose it)
 
-  // 29. Battery API check (missing in older headless)
-  try {
-    if ((navigator as any).getBattery) {
-      // Real browser likely has this
-    } else if (/Chrome/.test(ua)) {
-      score += 5; reasons.push("no_battery");
-    }
-  } catch {}
-
-  // 30. Detect abnormally fast page load (bots load instantly)
+  // 29. Instant load
   try {
     const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
     if (nav) {
@@ -200,7 +196,22 @@ function runBotDetection(): { score: number; reasons: string[] } {
     }
   } catch {}
 
-  return { score, reasons };
+  // ─── Mobile-specific positive signals (reduce score) ───────
+  if (mobile) {
+    // Real mobile device has orientation API
+    if ('DeviceOrientationEvent' in window) score -= 5;
+    // Real mobile has touch events
+    if (navigator.maxTouchPoints > 1) score -= 5;
+    // Real mobile has small pixel ratio or high DPR
+    if (window.devicePixelRatio >= 2) score -= 3;
+    // Connection type available on mobile
+    if ('connection' in navigator && (navigator as any).connection?.type) score -= 3;
+
+    // Ensure score doesn't go negative
+    score = Math.max(0, score);
+  }
+
+  return { score, reasons, isMobile: mobile };
 }
 
 // ─── Proof-of-Work challenge ──────────────────────────────────
@@ -334,10 +345,13 @@ const GeoGate = ({ children }: GeoGateProps) => {
   const getProof = useHumanProof();
   const botScoreRef = useRef(0);
 
-  // Stricter threshold for CPF links
-  const BOT_THRESHOLD = hasCpf ? 30 : 50;
-  const MIN_TIME = hasCpf ? 1500 : 1000;
-  const POW_DIFFICULTY = hasCpf ? 4 : 3;
+  // Detect mobile early for adaptive thresholds
+  const isMobileDevice = isRealMobile();
+
+  // Mobile-friendly thresholds: mobile browsers legitimately score higher on some checks
+  const BOT_THRESHOLD = hasCpf ? (isMobileDevice ? 45 : 30) : (isMobileDevice ? 60 : 50);
+  const MIN_TIME = hasCpf ? (isMobileDevice ? 1000 : 1500) : 800;
+  const POW_DIFFICULTY = isMobileDevice ? 3 : (hasCpf ? 4 : 3); // Lower PoW for slower mobile CPUs
 
   useEffect(() => {
     let cancelled = false;
@@ -377,14 +391,15 @@ const GeoGate = ({ children }: GeoGateProps) => {
       const proof = getProof();
       const tooFast = proof.elapsed < MIN_TIME;
 
-      // For CPF routes: if zero interactions AND fast, very suspicious
+      // On mobile, users tap links and land directly — zero mouse movement is NORMAL
       const noInteraction = proof.total === 0;
       const suspiciousMousePattern = proof.straightLineRatio > 0.8 && proof.mousePositionCount > 10;
 
       let adjustedScore = detection.score;
-      if (tooFast) adjustedScore += 20;
-      if (noInteraction && hasCpf) adjustedScore += 15;
-      if (suspiciousMousePattern) adjustedScore += 15;
+      if (tooFast) adjustedScore += 15;
+      // Only penalize zero interaction on desktop — mobile users don't move mouse
+      if (noInteraction && hasCpf && !detection.isMobile) adjustedScore += 15;
+      if (suspiciousMousePattern && !detection.isMobile) adjustedScore += 15;
       if (powResult && powResult.elapsed < 10) adjustedScore += 25; // Impossibly fast PoW
 
       await new Promise(r => setTimeout(r, 300));
