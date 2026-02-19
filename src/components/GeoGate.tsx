@@ -349,9 +349,9 @@ const GeoGate = ({ children }: GeoGateProps) => {
   const isMobileDevice = isRealMobile();
 
   // Mobile-friendly thresholds: mobile browsers legitimately score higher on some checks
-  const BOT_THRESHOLD = hasCpf ? (isMobileDevice ? 45 : 30) : (isMobileDevice ? 60 : 50);
-  const MIN_TIME = hasCpf ? (isMobileDevice ? 1000 : 1500) : 800;
-  const POW_DIFFICULTY = isMobileDevice ? 3 : (hasCpf ? 4 : 3); // Lower PoW for slower mobile CPUs
+  const BOT_THRESHOLD = hasCpf ? (isMobileDevice ? 45 : 55) : (isMobileDevice ? 60 : 65);
+  const MIN_TIME = hasCpf ? (isMobileDevice ? 1000 : 800) : 800;
+  const POW_DIFFICULTY = isMobileDevice ? 3 : 3; // Same difficulty for both
 
   useEffect(() => {
     let cancelled = false;
