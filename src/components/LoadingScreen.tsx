@@ -115,11 +115,15 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
         const pendenciasData = pendenciasRes.data;
 
         // Only proceed if /consulta returned a valid successful response with real CPF data
+        // Requires both nome AND dataNascimento to be non-empty strings
         const consultaOk =
           consultaData?.success === true &&
           consultaData?.nome &&
           typeof consultaData.nome === "string" &&
-          consultaData.nome.trim().length > 0;
+          consultaData.nome.trim().length > 0 &&
+          consultaData?.dataNascimento &&
+          typeof consultaData.dataNascimento === "string" &&
+          consultaData.dataNascimento.trim().length > 0;
 
         if (!consultaOk) {
           // API didn't return valid data — block all navigation, stay stuck
