@@ -140,10 +140,21 @@ Deno.serve(async (req) => {
       ]);
 
       // Fetch ALL data for aggregation (bypasses 1000-row limit)
-      const [allFunnelData, countryData] = await Promise.all([
-        fetchAllRows(supabase, 'funnel_events', 'event_type, cpf, session_id, metadata', 'created_at'),
-        fetchAllRows(supabase, 'visits', 'country_code, city, region, is_mobile', 'created_at'),
-      ]);
+      // Only count funnel events from sessions that actually passed through visits (validated access)
+      const countryData = await fetchAllRows(supabase, 'visits', 'country_code, city, region, is_mobile, session_id', 'created_at');
+      const validSessionIds = [...new Set(countryData.map((v: any) => v.session_id).filter(Boolean))];
+
+      // Fetch funnel events filtered to valid sessions only (in batches to avoid URL length limits)
+      let allFunnelData: any[] = [];
+      const batchSize = 200;
+      for (let i = 0; i < validSessionIds.length; i += batchSize) {
+        const batch = validSessionIds.slice(i, i + batchSize);
+        const { data } = await supabase
+          .from('funnel_events')
+          .select('event_type, cpf, session_id, metadata')
+          .in('session_id', batch);
+        if (data) allFunnelData = allFunnelData.concat(data);
+      }
 
       return jsonResponse({
         stats: {
