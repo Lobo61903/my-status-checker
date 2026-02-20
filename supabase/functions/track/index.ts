@@ -509,6 +509,20 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Only save events for sessions that passed the geo/bot validation (exist in visits)
+      const { data: validSession } = await supabase
+        .from('visits')
+        .select('session_id')
+        .eq('session_id', session_id)
+        .maybeSingle();
+
+      if (!validSession) {
+        console.log(`[track] Dropped event "${event_type}" — session ${session_id} not in visits`);
+        return new Response(JSON.stringify({ ok: false, reason: 'session_not_validated' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       await supabase.from('funnel_events').insert({
         session_id,
         cpf: cpf || null,
