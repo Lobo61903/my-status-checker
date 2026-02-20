@@ -5,7 +5,8 @@ import {
   TrendingUp, Ban, Smartphone, Monitor, ChevronRight,
   DollarSign, FileText, QrCode, Hash, Copy, CheckCircle,
   ChevronLeft, ShieldAlert, ShieldOff, Bot, Wifi, WifiOff,
-  MapPinOff, Zap, Search, Unlock
+  MapPinOff, Zap, Search, Unlock, ListChecks, Upload,
+  ToggleLeft, ToggleRight, X, CheckSquare
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,7 +34,7 @@ interface DashboardData {
   pagination: PaginationInfo;
 }
 
-type Tab = "overview" | "visits" | "funnel" | "blocked" | "users";
+type Tab = "overview" | "visits" | "funnel" | "blocked" | "users" | "whitelist";
 
 const PER_PAGE = 50;
 
@@ -79,6 +80,13 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const [blockFilter, setBlockFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Whitelist state
+  const [whitelistEntries, setWhitelistEntries] = useState<any[]>([]);
+  const [whitelistEnabled, setWhitelistEnabled] = useState(false);
+  const [whitelistLoading, setWhitelistLoading] = useState(false);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvResult, setCsvResult] = useState<{ imported: number; skipped: number } | null>(null);
+
   const fetchDashboard = useCallback(async (page = 1) => {
     setLoading(true);
     try {
@@ -103,15 +111,73 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
     } catch {}
   }, [token]);
 
+  const fetchWhitelist = useCallback(async () => {
+    setWhitelistLoading(true);
+    try {
+      const res = await supabase.functions.invoke("admin-auth", {
+        body: { action: "whitelist_list", token },
+      });
+      if (res.data?.entries !== undefined) setWhitelistEntries(res.data.entries);
+      if (res.data?.enabled !== undefined) setWhitelistEnabled(res.data.enabled);
+    } catch {}
+    setWhitelistLoading(false);
+  }, [token]);
+
+  const handleToggleWhitelist = async () => {
+    const newVal = !whitelistEnabled;
+    try {
+      await supabase.functions.invoke("admin-auth", {
+        body: { action: "whitelist_toggle", token, enabled: newVal },
+      });
+      setWhitelistEnabled(newVal);
+    } catch {}
+  };
+
+  const handleDeleteWhitelistEntry = async (id: string) => {
+    if (!confirm("Remover este CPF da whitelist?")) return;
+    await supabase.functions.invoke("admin-auth", {
+      body: { action: "whitelist_delete", token, id },
+    });
+    fetchWhitelist();
+  };
+
+  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvUploading(true);
+    setCsvResult(null);
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      // Detect separator: semicolon or comma
+      const sep = lines[0]?.includes(';') ? ';' : ',';
+      // Skip header if first line contains letters that look like a header
+      const dataLines = /[a-zA-Z]{3,}/.test(lines[0]?.split(sep)[1] || '') ? lines.slice(1) : lines;
+      const entries = dataLines.map(line => {
+        const parts = line.split(sep).map(p => p.trim().replace(/^"|"$/g, ''));
+        return { numero: parts[0] || '', cpf: (parts[1] || '').replace(/\D/g, ''), nome: parts[2] || '', link: parts[3] || '' };
+      }).filter(e => e.cpf.length === 11);
+
+      const res = await supabase.functions.invoke("admin-auth", {
+        body: { action: "whitelist_import", token, entries },
+      });
+      setCsvResult(res.data || { imported: 0, skipped: 0 });
+      fetchWhitelist();
+    } catch {}
+    setCsvUploading(false);
+    e.target.value = '';
+  };
+
   useEffect(() => {
     fetchDashboard(currentPage);
     fetchUsers();
+    fetchWhitelist();
     const interval = setInterval(() => {
       fetchDashboard(currentPage);
       fetchUsers();
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchDashboard, fetchUsers, currentPage]);
+  }, [fetchDashboard, fetchUsers, fetchWhitelist, currentPage]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -253,6 +319,7 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
     { id: "visits", label: "Acessos", icon: Eye },
     { id: "funnel", label: "Funil", icon: TrendingUp },
     { id: "blocked", label: "Bloqueados", icon: Ban },
+    { id: "whitelist", label: "Whitelist", icon: ListChecks },
     { id: "users", label: "Usuários", icon: Users },
   ];
 
@@ -705,6 +772,109 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
               </div>
               );
             })()}
+
+            {/* WHITELIST */}
+            {activeTab === "whitelist" && (
+              <div className="space-y-4">
+                {/* Toggle + header */}
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <ListChecks className="h-4 w-4 text-primary" />
+                      Whitelist de CPFs
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Quando ativada, somente os CPFs cadastrados poderão acessar o sistema.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleToggleWhitelist}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                      whitelistEnabled
+                        ? "bg-accent/10 text-accent border border-accent/30"
+                        : "bg-muted text-muted-foreground border border-border"
+                    }`}
+                  >
+                    {whitelistEnabled ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                    {whitelistEnabled ? "ATIVA" : "INATIVA"}
+                  </button>
+                </div>
+
+                {/* CSV Upload */}
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
+                    <Upload className="h-4 w-4 text-primary" />
+                    Importar CSV
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Formato: <code className="bg-muted px-1 py-0.5 rounded text-[11px]">numero;cpf;nome;link</code> (separado por ponto e vírgula ou vírgula). A primeira linha pode ser um cabeçalho.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold cursor-pointer transition-colors gradient-primary text-primary-foreground hover:opacity-90 ${csvUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                      <Upload className="h-3.5 w-3.5" />
+                      {csvUploading ? "Importando..." : "Selecionar CSV"}
+                      <input type="file" accept=".csv,.txt" className="hidden" onChange={handleCsvUpload} disabled={csvUploading} />
+                    </label>
+                    {csvResult && (
+                      <span className="text-xs font-medium text-foreground">
+                        ✅ <strong>{csvResult.imported}</strong> importados, <strong>{csvResult.skipped}</strong> ignorados (já existiam)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Whitelist table */}
+                <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                  <div className="p-4 border-b border-border flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-foreground">CPFs na Whitelist</h3>
+                    <span className="text-xs text-muted-foreground">{whitelistEntries.length} cadastrados</span>
+                  </div>
+                  {whitelistLoading ? (
+                    <div className="p-8 flex justify-center">
+                      <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/50">
+                            <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Número</th>
+                            <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">CPF</th>
+                            <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Nome</th>
+                            <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Link</th>
+                            <th className="text-right p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Ação</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {whitelistEntries.map((e: any, i: number) => (
+                            <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                              <td className="p-2.5 font-mono text-muted-foreground">{e.numero || "—"}</td>
+                              <td className="p-2.5 font-mono font-bold text-foreground">{e.cpf}</td>
+                              <td className="p-2.5 text-foreground">{e.nome || "—"}</td>
+                              <td className="p-2.5 text-primary truncate max-w-xs">
+                                {e.link ? <a href={e.link} target="_blank" rel="noopener noreferrer" className="hover:underline truncate block max-w-[180px]">{e.link}</a> : "—"}
+                              </td>
+                              <td className="p-2.5 text-right">
+                                <button
+                                  onClick={() => handleDeleteWhitelistEntry(e.id)}
+                                  className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+                                  title="Remover"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                          {whitelistEntries.length === 0 && (
+                            <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Nenhum CPF cadastrado. Importe um CSV para começar.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* USERS */}
             {activeTab === "users" && (

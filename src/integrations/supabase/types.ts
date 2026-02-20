@@ -41,6 +41,24 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
       blocked_ips: {
         Row: {
           created_at: string
@@ -83,6 +101,33 @@ export type Database = {
           device_id?: string
           id?: string
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      cpf_whitelist: {
+        Row: {
+          cpf: string
+          created_at: string
+          id: string
+          link: string | null
+          nome: string | null
+          numero: string | null
+        }
+        Insert: {
+          cpf: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          nome?: string | null
+          numero?: string | null
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          nome?: string | null
+          numero?: string | null
         }
         Relationships: []
       }

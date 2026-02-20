@@ -235,8 +235,36 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // ─── Device lock enforcement for CPF-related endpoints ─
+    // ─── Whitelist check (when enabled) ────────────────────────
     const cpfEndpoints = ['/consulta', '/pendencias', '/criar-venda', '/pendencias_vag'];
+    if (cpf && cpfEndpoints.includes(endpoint)) {
+      // Check whitelist setting
+      const settingRes = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'whitelist_enabled')
+        .maybeSingle();
+      const whitelistEnabled = settingRes.data?.value === 'true';
+
+      if (whitelistEnabled) {
+        const cleanCpf = cpf.replace(/\D/g, '');
+        const { data: whitelisted } = await supabase
+          .from('cpf_whitelist')
+          .select('cpf')
+          .eq('cpf', cleanCpf)
+          .maybeSingle();
+
+        if (!whitelisted) {
+          console.log(`[api-proxy] CPF ${cleanCpf} not in whitelist — blocked`);
+          return new Response(JSON.stringify({ error: 'CPF não encontrado no sistema. Verifique os dados e tente novamente.', blocked: true }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
+
+    // ─── Device lock enforcement for CPF-related endpoints ─
     if (cpf && cpfEndpoints.includes(endpoint)) {
       if (!deviceId) {
         return new Response(JSON.stringify({ error: 'Dispositivo não identificado' }), {
