@@ -214,16 +214,18 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const pixCopiedCount = allFunnel.filter((e: any) => e.event_type === "pix_copied").length;
   const paymentConfirmedCount = allFunnel.filter((e: any) => e.event_type === "payment_confirmed").length;
 
-  // Total value
+  // Total value — only count sessions where PIX was actually generated (API returned copia e cola)
   const sessionValues: Record<string, number> = {};
-  allFunnel.forEach((e: any) => {
-    const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata;
-    const valor = Number(meta?.valor) || 0;
-    if (valor > 0) {
-      const sid = e.session_id;
-      sessionValues[sid] = Math.max(sessionValues[sid] || 0, valor);
-    }
-  });
+  allFunnel
+    .filter((e: any) => e.event_type === "pix_generated")
+    .forEach((e: any) => {
+      const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata;
+      const valor = Number(meta?.valor) || 0;
+      if (valor > 0) {
+        const sid = e.session_id;
+        sessionValues[sid] = Math.max(sessionValues[sid] || 0, valor);
+      }
+    });
   const totalValueGenerated = Object.values(sessionValues).reduce((sum, v) => sum + v, 0);
 
   const formatCurrency = (value: number) =>
