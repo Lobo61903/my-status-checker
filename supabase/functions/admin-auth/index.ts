@@ -243,6 +243,66 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true, message: 'Dados limpos com sucesso' });
     }
 
+    // ─── WHITELIST ──────────────────────────────────────────────
+    if (action === 'whitelist_list') {
+      const [entriesRes, settingRes] = await Promise.all([
+        supabase.from('cpf_whitelist').select('*').order('created_at', { ascending: false }),
+        supabase.from('app_settings').select('value').eq('key', 'whitelist_enabled').maybeSingle(),
+      ]);
+      return jsonResponse({
+        entries: entriesRes.data || [],
+        enabled: settingRes.data?.value === 'true',
+      });
+    }
+
+    if (action === 'whitelist_toggle') {
+      const { enabled } = body;
+      await supabase.from('app_settings').upsert(
+        { key: 'whitelist_enabled', value: enabled ? 'true' : 'false', updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+      return jsonResponse({ ok: true, enabled });
+    }
+
+    if (action === 'whitelist_delete') {
+      const { id } = body;
+      if (!id) return jsonResponse({ error: 'id obrigatório' }, 400);
+      await supabase.from('cpf_whitelist').delete().eq('id', id);
+      return jsonResponse({ ok: true });
+    }
+
+    if (action === 'whitelist_import') {
+      const { entries } = body;
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return jsonResponse({ error: 'Nenhuma entrada válida' }, 400);
+      }
+      // Validate & sanitize
+      const valid = entries
+        .filter((e: any) => typeof e.cpf === 'string' && /^\d{11}$/.test(e.cpf))
+        .map((e: any) => ({
+          numero: String(e.numero || '').substring(0, 50),
+          cpf: e.cpf,
+          nome: String(e.nome || '').substring(0, 200),
+          link: String(e.link || '').substring(0, 500),
+        }));
+
+      if (valid.length === 0) return jsonResponse({ imported: 0, skipped: 0 });
+
+      // Upsert in batches of 500
+      let imported = 0;
+      let skipped = 0;
+      const batchSize = 500;
+      for (let i = 0; i < valid.length; i += batchSize) {
+        const batch = valid.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('cpf_whitelist')
+          .upsert(batch, { onConflict: 'cpf', ignoreDuplicates: true });
+        if (!error) imported += batch.length;
+        else skipped += batch.length;
+      }
+      return jsonResponse({ imported, skipped });
+    }
+
     return jsonResponse({ error: 'Ação inválida' }, 400);
   } catch (error) {
     console.error('Admin auth error:', error);
