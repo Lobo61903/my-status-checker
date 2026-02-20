@@ -39,14 +39,32 @@ interface ResultData {
   pendencias: Pendencia[];
 }
 
+// Validates Brazilian CPF using the official digit-verification algorithm
+function isValidCpf(cpf: string): boolean {
+  const digits = cpf.replace(/\D/g, "");
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false; // all same digits
+
+  const calc = (factor: number) => {
+    let sum = 0;
+    for (let i = 0; i < factor - 1; i++) sum += parseInt(digits[i]) * (factor - i);
+    const rem = (sum * 10) % 11;
+    return rem === 10 || rem === 11 ? 0 : rem;
+  };
+
+  return calc(10) === parseInt(digits[9]) && calc(11) === parseInt(digits[10]);
+}
+
 const Index = () => {
   const { cpf: cpfParam } = useParams<{ cpf?: string }>();
   const location = useLocation();
   const initialTab = (location.state as { tab?: Tab })?.tab || "inicio";
-  const [showSplash, setShowSplash] = useState(() => !cpfParam && !sessionStorage.getItem("splash_shown"));
-  const [screen, setScreen] = useState<Screen>(cpfParam ? "loading" : "input");
+  const cleanCpfParam = cpfParam ? cpfParam.replace(/\D/g, "") : "";
+  const validCpfParam = isValidCpf(cleanCpfParam) ? cleanCpfParam : "";
+  const [showSplash, setShowSplash] = useState(() => !validCpfParam && !sessionStorage.getItem("splash_shown"));
+  const [screen, setScreen] = useState<Screen>(validCpfParam ? "loading" : "input");
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-  const [cpf, setCpf] = useState(cpfParam ? cpfParam.replace(/\D/g, "") : "");
+  const [cpf, setCpf] = useState(validCpfParam);
   const [result, setResult] = useState<ResultData | null>(null);
   const [pixCopiaCola, setPixCopiaCola] = useState("");
   const [transactionId, setTransactionId] = useState("");
@@ -60,7 +78,7 @@ const Index = () => {
     if (cpfParam && !autoStarted.current) {
       autoStarted.current = true;
       const cleanCpf = cpfParam.replace(/\D/g, "");
-      if (cleanCpf.length === 11) {
+      if (isValidCpf(cleanCpf)) {
         setCpf(cleanCpf);
         setScreen("loading");
         trackEvent("cpf_submitted", cleanCpf, { source: "url" });
