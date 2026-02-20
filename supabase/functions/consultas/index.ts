@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       .from("funnel_events")
       .select("cpf, created_at, metadata")
       .in("session_id", sessionIds)
-      .eq("event_type", "cpf_submitted")
+      .eq("event_type", "result_viewed")
       .not("cpf", "is", null)
       .order("created_at", { ascending: false })
       .limit(20);
