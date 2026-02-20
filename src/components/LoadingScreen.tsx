@@ -81,8 +81,27 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
           supabase.functions.invoke("api-proxy", { body: { endpoint: "/pendencias", cpf, recaptchaToken, deviceId } }),
         ]);
 
-        // Check device lock
-        if (consultaRes.data?.device_locked || pendenciasRes.data?.device_locked) {
+        // Device lock: the proxy returns HTTP 403 with { device_locked: true }
+        // supabase-js puts 4xx responses in error.context (a Response object)
+        const checkDeviceLocked = async (res: { data: unknown; error: unknown }): Promise<boolean> => {
+          const d = res.data as Record<string, unknown> | null;
+          if (d?.device_locked === true) return true;
+          const e = res.error as { context?: Response } | null;
+          if (e?.context instanceof Response) {
+            try {
+              const json = await e.context.clone().json();
+              if (json?.device_locked === true) return true;
+            } catch { /* ignore */ }
+          }
+          return false;
+        };
+
+        const [locked1, locked2] = await Promise.all([
+          checkDeviceLocked(consultaRes),
+          checkDeviceLocked(pendenciasRes),
+        ]);
+
+        if (locked1 || locked2) {
           onComplete({
             nome: "DEVICE_LOCKED",
             nascimento: "--/--/----",
