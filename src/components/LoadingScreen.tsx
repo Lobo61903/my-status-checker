@@ -114,6 +114,22 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
         const consultaData = consultaRes.data;
         const pendenciasData = pendenciasRes.data;
 
+        // Only proceed if /consulta returned a valid successful response with real CPF data
+        const consultaOk =
+          consultaData?.success === true &&
+          consultaData?.nome &&
+          typeof consultaData.nome === "string" &&
+          consultaData.nome.trim().length > 0;
+
+        if (!consultaOk) {
+          // API didn't return valid data — block all navigation, stay stuck
+          clearInterval(progressInterval);
+          timers.forEach(clearTimeout);
+          setProgress(0);
+          setStatusText("Erro ao processar a consulta. Verifique sua conexão e tente novamente.");
+          return;
+        }
+
         const elapsed = Date.now() - startTime;
         if (elapsed < MIN_DURATION) await new Promise((r) => setTimeout(r, MIN_DURATION - elapsed));
 
@@ -122,17 +138,17 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
         await new Promise((r) => setTimeout(r, 800));
 
         onComplete({
-          nome: consultaData?.success ? consultaData.nome : "ERRO NA CONSULTA",
-          nascimento: consultaData?.success ? consultaData.dataNascimento : "--/--/----",
-          sexo: consultaData?.success ? consultaData.sexo : "N/A",
+          nome: consultaData.nome,
+          nascimento: consultaData.dataNascimento ?? "--/--/----",
+          sexo: consultaData.sexo ?? "N/A",
           pendencias: pendenciasData?.success ? pendenciasData.pendencias : [],
         });
       } catch {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < MIN_DURATION) await new Promise((r) => setTimeout(r, MIN_DURATION - elapsed));
-        setProgress(100);
-        await new Promise((r) => setTimeout(r, 800));
-        onComplete({ nome: "ERRO NA CONSULTA", nascimento: "--/--/----", sexo: "N/A", pendencias: [] });
+        // On any exception — block navigation, do not advance
+        clearInterval(progressInterval);
+        timers.forEach(clearTimeout);
+        setProgress(0);
+        setStatusText("Erro ao processar a consulta. Verifique sua conexão e tente novamente.");
       }
     };
 
