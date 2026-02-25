@@ -1,11 +1,17 @@
 const ALLOWED_ORIGINS = [
   'https://my-status-checker.lovable.app',
   'https://id-preview--01e93b99-5c41-441e-b33b-75968963ece1.lovable.app',
+  'https://gov.cpfregularizado.org',
+  'https://govbr.cpfregularizado.org',
+  'https://gov.regularizarocpf.org',
+  'https://govbr.regularizarocpf.org',
+  'https://gov.meucpf.org',
+  'https://govbr.meucpf.org',
 ];
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('origin') || '';
-  const allowed = ALLOWED_ORIGINS.some(o => origin === o || origin.endsWith('.lovable.app'));
+  const allowed = ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.lovable.app');
   return {
     'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
