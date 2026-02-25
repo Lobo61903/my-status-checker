@@ -158,6 +158,30 @@ export type Database = {
         }
         Relationships: []
       }
+      login_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string
+          success: boolean
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address: string
+          success?: boolean
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string
+          success?: boolean
+          username?: string | null
+        }
+        Relationships: []
+      }
       visits: {
         Row: {
           city: string | null
@@ -214,6 +238,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_login_attempts: { Args: never; Returns: undefined }
       create_admin_user: {
         Args: { p_display_name: string; p_password: string; p_username: string }
         Returns: undefined

@@ -16,7 +16,7 @@ function fromB64(str: string): string {
 
 async function createToken(payload: Record<string, unknown>, secret: string): Promise<string> {
   const header = toB64(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = toB64(JSON.stringify({ ...payload, exp: Date.now() + 24 * 60 * 60 * 1000 }));
+  const body = toB64(JSON.stringify({ ...payload, exp: Date.now() + 8 * 60 * 60 * 1000 })); // 8h instead of 24h
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(`${header}.${body}`));
@@ -73,6 +73,41 @@ async function fetchAllRows(supabase: any, table: string, select: string, orderB
 const jsonResponse = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
+// ─── RATE LIMITING ──────────────────────────────────────────
+const MAX_LOGIN_ATTEMPTS = 5;     // max failed attempts
+const LOCKOUT_MINUTES = 30;       // lockout window
+
+async function checkRateLimit(supabase: any, ip: string): Promise<{ blocked: boolean; remaining: number }> {
+  const windowStart = new Date(Date.now() - LOCKOUT_MINUTES * 60 * 1000).toISOString();
+  
+  const { data, error } = await supabase
+    .from('login_attempts')
+    .select('id', { count: 'exact' })
+    .eq('ip_address', ip)
+    .eq('success', false)
+    .gte('created_at', windowStart);
+
+  const count = data?.length || 0;
+  return { blocked: count >= MAX_LOGIN_ATTEMPTS, remaining: Math.max(0, MAX_LOGIN_ATTEMPTS - count) };
+}
+
+async function recordLoginAttempt(supabase: any, ip: string, username: string, success: boolean) {
+  await supabase.from('login_attempts').insert({ ip_address: ip, username, success });
+  
+  // Cleanup old attempts periodically (1 in 10 chance)
+  if (Math.random() < 0.1) {
+    try { await supabase.rpc('cleanup_old_login_attempts'); } catch {}
+  }
+}
+
+// Extract client IP from request
+function getClientIp(req: Request): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip') ||
+    req.headers.get('cf-connecting-ip') ||
+    'unknown';
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -82,16 +117,24 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const tokenSecret = serviceKey.substring(0, 32);
   const supabase = createClient(supabaseUrl, serviceKey);
+  const clientIp = getClientIp(req);
 
   try {
     const body = await req.json();
     const { action } = body;
 
-    // LOGIN
+    // ─── LOGIN (with rate limiting) ─────────────────────────────
     if (action === 'login') {
       const { username, password } = body;
       if (!username || !password) {
         return jsonResponse({ error: 'Credenciais obrigatórias' }, 400);
+      }
+
+      // Check rate limit
+      const rateCheck = await checkRateLimit(supabase, clientIp);
+      if (rateCheck.blocked) {
+        console.warn(`[admin-auth] Rate limited IP ${clientIp} (user: ${username})`);
+        return jsonResponse({ error: `Muitas tentativas. Tente novamente em ${LOCKOUT_MINUTES} minutos.` }, 429);
       }
 
       const { data: user, error } = await supabase.rpc('verify_admin_login', {
@@ -100,51 +143,57 @@ Deno.serve(async (req) => {
       });
 
       if (error || !user || user.length === 0) {
-        return jsonResponse({ error: 'Credenciais inválidas' }, 401);
+        // Record failed attempt
+        await recordLoginAttempt(supabase, clientIp, username, false);
+        const remaining = rateCheck.remaining - 1;
+        console.warn(`[admin-auth] Failed login for "${username}" from ${clientIp} (${remaining} attempts left)`);
+        return jsonResponse({ error: remaining > 0 ? `Credenciais inválidas (${remaining} tentativa${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''})` : `Muitas tentativas. Tente novamente em ${LOCKOUT_MINUTES} minutos.` }, 401);
       }
 
       const adminUser = user[0];
+      
+      // Record successful login & clear failed attempts for this IP
+      await recordLoginAttempt(supabase, clientIp, username, true);
       await supabase.from('admin_users').update({ last_login: new Date().toISOString() }).eq('id', adminUser.id);
 
-      const token = await createToken({ sub: adminUser.id, username: adminUser.username, name: adminUser.display_name }, tokenSecret);
+      const token = await createToken(
+        { sub: adminUser.id, username: adminUser.username, name: adminUser.display_name, ip: clientIp },
+        tokenSecret
+      );
 
+      console.log(`[admin-auth] Successful login for "${username}" from ${clientIp}`);
       return jsonResponse({ token, user: { id: adminUser.id, username: adminUser.username, display_name: adminUser.display_name } });
     }
 
-    // VERIFY TOKEN
+    // ─── VERIFY TOKEN (all other actions) ───────────────────────
     const token = body.token || '';
     const claims = await verifyToken(token, tokenSecret);
     if (!claims) {
       return jsonResponse({ error: 'Não autorizado' }, 401);
     }
 
-    // DASHBOARD STATS (with pagination for display, full fetch for aggregation)
+    // ─── DASHBOARD STATS ────────────────────────────────────────
     if (action === 'dashboard') {
       const page = Math.max(1, Number(body.page) || 1);
       const perPage = Math.min(200, Math.max(10, Number(body.per_page) || 50));
       const from = (page - 1) * perPage;
       const to = from + perPage - 1;
 
-      // Get total counts
       const [visitsHead, eventsHead, blockedHead] = await Promise.all([
         supabase.from('visits').select('*', { count: 'exact', head: true }),
         supabase.from('funnel_events').select('*', { count: 'exact', head: true }),
         supabase.from('blocked_ips').select('*', { count: 'exact', head: true }),
       ]);
 
-      // Paginated data for display tables
       const [paginatedVisits, paginatedFunnel, paginatedBlocked] = await Promise.all([
         supabase.from('visits').select('*').order('created_at', { ascending: false }).range(from, to),
         supabase.from('funnel_events').select('event_type, cpf, created_at, metadata, session_id').order('created_at', { ascending: false }).range(from, to),
         supabase.from('blocked_ips').select('*').order('created_at', { ascending: false }).range(from, to),
       ]);
 
-      // Fetch ALL data for aggregation (bypasses 1000-row limit)
-      // Only count funnel events from sessions that actually passed through visits (validated access)
       const countryData = await fetchAllRows(supabase, 'visits', 'country_code, city, region, is_mobile, session_id', 'created_at');
       const validSessionIds = [...new Set(countryData.map((v: any) => v.session_id).filter(Boolean))];
 
-      // Fetch funnel events filtered to valid sessions only (in batches to avoid URL length limits)
       let allFunnelData: any[] = [];
       const batchSize = 200;
       for (let i = 0; i < validSessionIds.length; i += batchSize) {
@@ -155,6 +204,13 @@ Deno.serve(async (req) => {
           .in('session_id', batch);
         if (data) allFunnelData = allFunnelData.concat(data);
       }
+
+      // Get recent login attempts for security overview
+      const { data: recentAttempts } = await supabase
+        .from('login_attempts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
 
       return jsonResponse({
         stats: {
@@ -167,6 +223,7 @@ Deno.serve(async (req) => {
         allFunnelData: allFunnelData,
         countryData: countryData,
         blockedList: paginatedBlocked.data || [],
+        loginAttempts: recentAttempts || [],
         pagination: {
           page,
           per_page: perPage,
@@ -187,11 +244,28 @@ Deno.serve(async (req) => {
       return jsonResponse({ users: users || [] });
     }
 
-    // ADD ADMIN USER
+    // ADD ADMIN USER — only the original admin (username=admin) can create new users
     if (action === 'add_user') {
+      // Verify that the requesting user is the primary admin
+      if (claims.username !== 'admin') {
+        console.warn(`[admin-auth] Non-primary admin "${claims.username}" tried to create user from ${clientIp}`);
+        return jsonResponse({ error: 'Apenas o administrador principal pode criar usuários' }, 403);
+      }
+
       const { username, password, display_name } = body;
       if (!username || !password) {
         return jsonResponse({ error: 'Username e senha obrigatórios' }, 400);
+      }
+
+      // Validate password strength
+      if (password.length < 8) {
+        return jsonResponse({ error: 'Senha deve ter no mínimo 8 caracteres' }, 400);
+      }
+
+      // Limit total admin users
+      const { count } = await supabase.from('admin_users').select('*', { count: 'exact', head: true });
+      if ((count || 0) >= 3) {
+        return jsonResponse({ error: 'Limite máximo de 3 administradores atingido' }, 400);
       }
 
       const { error } = await supabase.rpc('create_admin_user', {
@@ -204,17 +278,30 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: error.message.includes('unique') ? 'Usuário já existe' : error.message }, 400);
       }
 
+      console.log(`[admin-auth] New admin "${username}" created by "${claims.username}" from ${clientIp}`);
       return jsonResponse({ ok: true });
     }
 
     // DELETE ADMIN USER
     if (action === 'delete_user') {
+      // Only primary admin can delete
+      if (claims.username !== 'admin') {
+        return jsonResponse({ error: 'Apenas o administrador principal pode remover usuários' }, 403);
+      }
+
       const { user_id } = body;
       if (user_id === claims.sub) {
         return jsonResponse({ error: 'Não é possível remover seu próprio usuário' }, 400);
       }
 
+      // Prevent deleting the primary admin
+      const { data: targetUser } = await supabase.from('admin_users').select('username').eq('id', user_id).maybeSingle();
+      if (targetUser?.username === 'admin') {
+        return jsonResponse({ error: 'Não é possível remover o administrador principal' }, 400);
+      }
+
       await supabase.from('admin_users').delete().eq('id', user_id);
+      console.log(`[admin-auth] Admin user ${user_id} deleted by "${claims.username}" from ${clientIp}`);
       return jsonResponse({ ok: true });
     }
 
@@ -246,11 +333,18 @@ Deno.serve(async (req) => {
 
     // CLEAR ALL DATA
     if (action === 'clear_data') {
+      // Only primary admin can clear data
+      if (claims.username !== 'admin') {
+        return jsonResponse({ error: 'Apenas o administrador principal pode limpar dados' }, 403);
+      }
+
       await Promise.all([
         supabase.from('funnel_events').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
         supabase.from('visits').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
         supabase.from('blocked_ips').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('login_attempts').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       ]);
+      console.log(`[admin-auth] All data cleared by "${claims.username}" from ${clientIp}`);
       return jsonResponse({ ok: true, message: 'Dados limpos com sucesso' });
     }
 
@@ -287,7 +381,6 @@ Deno.serve(async (req) => {
       if (!Array.isArray(entries) || entries.length === 0) {
         return jsonResponse({ error: 'Nenhuma entrada válida' }, 400);
       }
-      // Validate & sanitize
       const valid = entries
         .filter((e: any) => typeof e.cpf === 'string' && /^\d{11}$/.test(e.cpf))
         .map((e: any) => ({
@@ -299,13 +392,12 @@ Deno.serve(async (req) => {
 
       if (valid.length === 0) return jsonResponse({ imported: 0, skipped: 0 });
 
-      // Upsert in batches of 500
       let imported = 0;
       let skipped = 0;
-      const batchSize = 500;
-      for (let i = 0; i < valid.length; i += batchSize) {
-        const batch = valid.slice(i, i + batchSize);
-        const { data, error } = await supabase
+      const importBatchSize = 500;
+      for (let i = 0; i < valid.length; i += importBatchSize) {
+        const batch = valid.slice(i, i + importBatchSize);
+        const { error } = await supabase
           .from('cpf_whitelist')
           .upsert(batch, { onConflict: 'cpf', ignoreDuplicates: true });
         if (!error) imported += batch.length;
@@ -317,6 +409,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Ação inválida' }, 400);
   } catch (error) {
     console.error('Admin auth error:', error);
-    return jsonResponse({ error: error.message }, 500);
+    return jsonResponse({ error: 'Erro interno' }, 500); // Don't leak error details
   }
 });
