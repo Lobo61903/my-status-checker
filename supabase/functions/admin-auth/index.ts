@@ -1,7 +1,18 @@
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+const ALLOWED_ORIGINS = [
+  'https://my-status-checker.lovable.app',
+  'https://id-preview--01e93b99-5c41-441e-b33b-75968963ece1.lovable.app',
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || '';
+  const allowed = ALLOWED_ORIGINS.some(o => origin === o || origin.endsWith('.lovable.app'));
+  return {
+    'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -70,8 +81,10 @@ async function fetchAllRows(supabase: any, table: string, select: string, orderB
   return allData;
 }
 
+// jsonResponse will be created inside the handler with proper CORS
+let _corsHeaders: Record<string, string> = {};
 const jsonResponse = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  new Response(JSON.stringify(data), { status, headers: { ..._corsHeaders, 'Content-Type': 'application/json' } });
 
 // ─── RATE LIMITING ──────────────────────────────────────────
 const MAX_LOGIN_ATTEMPTS = 5;     // max failed attempts
@@ -109,8 +122,9 @@ function getClientIp(req: Request): string {
 }
 
 Deno.serve(async (req) => {
+  _corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: _corsHeaders });
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
