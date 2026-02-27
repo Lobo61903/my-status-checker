@@ -212,18 +212,9 @@ Deno.serve(async (req) => {
       ]);
 
       const countryData = await fetchAllRows(supabase, 'visits', 'country_code, city, region, is_mobile, session_id', 'created_at');
-      const validSessionIds = [...new Set(countryData.map((v: any) => v.session_id).filter(Boolean))];
 
-      let allFunnelData: any[] = [];
-      const batchSize = 200;
-      for (let i = 0; i < validSessionIds.length; i += batchSize) {
-        const batch = validSessionIds.slice(i, i + batchSize);
-        const { data } = await supabase
-          .from('funnel_events')
-          .select('event_type, cpf, session_id, metadata')
-          .in('session_id', batch);
-        if (data) allFunnelData = allFunnelData.concat(data);
-      }
+      // Fetch ALL funnel events (not just those with matching visits)
+      const allFunnelData = await fetchAllRows(supabase, 'funnel_events', 'event_type, cpf, session_id, metadata', 'created_at');
 
       // Get recent login attempts for security overview
       const { data: recentAttempts } = await supabase
