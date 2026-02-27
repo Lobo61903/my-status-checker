@@ -44,28 +44,28 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
     if (hasStarted.current) return;
     hasStarted.current = true;
 
-    const speed = fast ? 0.33 : 1;
+    const speed = fast ? 0.5 : 1;
 
     const progressInterval = setInterval(() => {
       setProgress((p) => {
         if (p >= 100) return 100;
-        return Math.min(p + Math.random() * (fast ? 6 : 3) + 0.5, 100);
+        return Math.min(p + Math.random() * 8 + 2, 100);
       });
-    }, 200);
+    }, 100);
 
     const statusMessages = [
-      { time: 300 * speed, text: "Conectando ao servidor da Receita Federal..." },
-      { time: 1200 * speed, text: "Autenticação concluída. Acessando base de dados..." },
-      { time: 2500 * speed, text: "Cruzando informações tributárias..." },
-      { time: 3800 * speed, text: "Consultando sistema SERPRO..." },
-      { time: 5000 * speed, text: "Consolidando resultado da análise..." },
+      { time: 200 * speed, text: "Conectando ao servidor da Receita Federal..." },
+      { time: 600 * speed, text: "Autenticação concluída. Acessando base de dados..." },
+      { time: 1000 * speed, text: "Cruzando informações tributárias..." },
+      { time: 1400 * speed, text: "Consultando sistema SERPRO..." },
+      { time: 1700 * speed, text: "Consolidando resultado da análise..." },
     ];
 
     const timers = [
-      setTimeout(() => setActiveStep(1), 1200 * speed),
-      setTimeout(() => setActiveStep(2), 2500 * speed),
-      setTimeout(() => setActiveStep(3), 3800 * speed),
-      setTimeout(() => setActiveStep(4), 5000 * speed),
+      setTimeout(() => setActiveStep(1), 400 * speed),
+      setTimeout(() => setActiveStep(2), 800 * speed),
+      setTimeout(() => setActiveStep(3), 1200 * speed),
+      setTimeout(() => setActiveStep(4), 1600 * speed),
       ...statusMessages.map(({ time, text }) =>
         setTimeout(() => setStatusText(text), time)
       ),
@@ -73,7 +73,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
 
     const fetchData = async () => {
       const startTime = Date.now();
-      const MIN_DURATION = fast ? 2500 : 6000;
+      const MIN_DURATION = fast ? 1000 : 2000;
       try {
         const deviceId = getDeviceId();
         const [consultaRes, pendenciasRes] = await Promise.all([

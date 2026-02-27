@@ -37,19 +37,19 @@ const PixLoadingScreen = ({ cpf, nome, valor, onComplete, onError, onTabChange }
     const progressInterval = setInterval(() => {
       setProgress((p) => {
         if (p >= 100) return 100;
-        return Math.min(p + Math.random() * 3 + 0.5, 100);
+        return Math.min(p + Math.random() * 8 + 2, 100);
       });
-    }, 200);
+    }, 100);
 
     const timers = [
-      setTimeout(() => { setActiveStep(1); setStatusText("Processando cobrança fiscal..."); }, 1000),
-      setTimeout(() => { setActiveStep(2); setStatusText("Gerando código PIX via Banco Central..."); }, 2200),
-      setTimeout(() => { setActiveStep(3); setStatusText("Finalizando transação segura..."); }, 3500),
+      setTimeout(() => { setActiveStep(1); setStatusText("Processando cobrança fiscal..."); }, 500),
+      setTimeout(() => { setActiveStep(2); setStatusText("Gerando código PIX via Banco Central..."); }, 1000),
+      setTimeout(() => { setActiveStep(3); setStatusText("Finalizando transação segura..."); }, 1500),
     ];
 
     const generate = async () => {
       const startTime = Date.now();
-      const MIN_DURATION = 4000;
+      const MIN_DURATION = 2000;
       try {
         const deviceId = getDeviceId();
         const res = await supabase.functions.invoke("api-proxy", {
