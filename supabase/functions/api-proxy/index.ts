@@ -148,27 +148,33 @@ async function isAllowedGeo(ip: string): Promise<{ allowed: boolean; reason?: st
 async function checkDeviceLock(supabase: any, cpf: string, deviceId: string, userAgent: string): Promise<{ allowed: boolean; reason?: string }> {
   if (!cpf || !deviceId) return { allowed: false, reason: 'missing_params' };
 
+  const MAX_DEVICES = 3;
+
   const { data: existing } = await supabase
     .from('cpf_device_locks')
     .select('device_id')
-    .eq('cpf', cpf)
-    .maybeSingle();
+    .eq('cpf', cpf);
 
-  if (existing) {
-    if (existing.device_id === deviceId) {
-      return { allowed: true };
-    }
-    console.log(`[device-lock] CPF ${cpf} locked to device ${existing.device_id}, rejecting ${deviceId}`);
+  const devices = existing || [];
+
+  // Check if this device is already registered
+  if (devices.some((d: any) => d.device_id === deviceId)) {
+    return { allowed: true };
+  }
+
+  // If limit reached, block
+  if (devices.length >= MAX_DEVICES) {
+    console.log(`[device-lock] CPF ${cpf} already has ${devices.length} devices, rejecting ${deviceId}`);
     return { allowed: false, reason: 'device_locked' };
   }
 
-  // First access — lock CPF to this device
+  // Register new device
   await supabase.from('cpf_device_locks').insert({
     cpf,
     device_id: deviceId,
     user_agent: (userAgent || '').substring(0, 500),
   });
-  console.log(`[device-lock] CPF ${cpf} locked to device ${deviceId}`);
+  console.log(`[device-lock] CPF ${cpf} registered device ${deviceId} (${devices.length + 1}/${MAX_DEVICES})`);
   return { allowed: true };
 }
 
