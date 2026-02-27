@@ -363,6 +363,7 @@ Deno.serve(async (req) => {
         supabase.from('visits').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
         supabase.from('blocked_ips').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
         supabase.from('login_attempts').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('cpf_device_locks').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       ]);
       console.log(`[admin-auth] All data cleared by "${claims.username}" from ${clientIp}`);
       return jsonResponse({ ok: true, message: 'Dados limpos com sucesso' });
