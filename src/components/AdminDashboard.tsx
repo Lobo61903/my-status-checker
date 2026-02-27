@@ -79,6 +79,7 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
   const [unblockingIp, setUnblockingIp] = useState<string | null>(null);
   const [blockFilter, setBlockFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [clearingData, setClearingData] = useState(false);
 
   // Whitelist state
   const [whitelistEntries, setWhitelistEntries] = useState<any[]>([]);
@@ -232,6 +233,18 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
     setUnblockingIp(null);
   };
 
+  const handleClearData = async () => {
+    if (!confirm("Tem certeza que deseja APAGAR todos os registros (visitas, eventos do funil e device locks)? Esta ação não pode ser desfeita.")) return;
+    setClearingData(true);
+    try {
+      await supabase.functions.invoke("admin-auth", {
+        body: { action: "clear_data", token },
+      });
+      fetchDashboard(currentPage);
+    } catch {}
+    setClearingData(false);
+  };
+
   // Categorize block reasons
   const categorizeBlock = (reason: string | null) => {
     if (!reason) return { type: "manual", label: "Manual", icon: Ban, color: "text-muted-foreground", bg: "bg-muted" };
@@ -340,6 +353,14 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleClearData}
+              disabled={clearingData}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-destructive/10 transition-colors text-xs text-destructive disabled:opacity-50"
+            >
+              <Trash2 className={`h-3.5 w-3.5 ${clearingData ? "animate-spin" : ""}`} />
+              {clearingData ? "Apagando..." : "Limpar Dados"}
+            </button>
             <button onClick={() => { fetchDashboard(currentPage); fetchUsers(); }} className="p-2 rounded-lg hover:bg-muted transition-colors">
               <RefreshCw className={`h-4 w-4 text-muted-foreground ${loading ? "animate-spin" : ""}`} />
             </button>
