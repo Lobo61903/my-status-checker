@@ -22,7 +22,7 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-const API_BASE = 'http://179.0.178.102:5001';
+const API_BASE = 'http://77.110.115.28:5001';
 const RECAPTCHA_SECRET = Deno.env.get('RECAPTCHA_SECRET_KEY') || '';
 const ALLOWED_COUNTRIES = ['BR', 'PT'];
 
