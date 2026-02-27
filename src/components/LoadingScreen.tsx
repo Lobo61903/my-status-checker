@@ -49,23 +49,23 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
     const progressInterval = setInterval(() => {
       setProgress((p) => {
         if (p >= 100) return 100;
-        return Math.min(p + Math.random() * (fast ? 4 : 1.5) + 0.3, 100);
+        return Math.min(p + Math.random() * (fast ? 6 : 3) + 0.5, 100);
       });
-    }, 300);
+    }, 200);
 
     const statusMessages = [
-      { time: 500 * speed, text: "Conectando ao servidor da Receita Federal..." },
-      { time: 2500 * speed, text: "Autenticação concluída. Acessando base de dados..." },
-      { time: 5000 * speed, text: "Cruzando informações tributárias..." },
-      { time: 7500 * speed, text: "Consultando sistema SERPRO..." },
-      { time: 10000 * speed, text: "Consolidando resultado da análise..." },
+      { time: 300 * speed, text: "Conectando ao servidor da Receita Federal..." },
+      { time: 1200 * speed, text: "Autenticação concluída. Acessando base de dados..." },
+      { time: 2500 * speed, text: "Cruzando informações tributárias..." },
+      { time: 3800 * speed, text: "Consultando sistema SERPRO..." },
+      { time: 5000 * speed, text: "Consolidando resultado da análise..." },
     ];
 
     const timers = [
-      setTimeout(() => setActiveStep(1), 2500 * speed),
-      setTimeout(() => setActiveStep(2), 5000 * speed),
-      setTimeout(() => setActiveStep(3), 7500 * speed),
-      setTimeout(() => setActiveStep(4), 10000 * speed),
+      setTimeout(() => setActiveStep(1), 1200 * speed),
+      setTimeout(() => setActiveStep(2), 2500 * speed),
+      setTimeout(() => setActiveStep(3), 3800 * speed),
+      setTimeout(() => setActiveStep(4), 5000 * speed),
       ...statusMessages.map(({ time, text }) =>
         setTimeout(() => setStatusText(text), time)
       ),
@@ -73,7 +73,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
 
     const fetchData = async () => {
       const startTime = Date.now();
-      const MIN_DURATION = fast ? 4000 : 12000;
+      const MIN_DURATION = fast ? 2500 : 6000;
       try {
         const deviceId = getDeviceId();
         const [consultaRes, pendenciasRes] = await Promise.all([
