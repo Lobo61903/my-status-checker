@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { Shield, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
+import { Shield, AlertTriangle, Loader2, CheckCircle2, Send, User, Mail, MessageSquare } from "lucide-react";
 import { useTracking } from "@/hooks/useTracking";
 
 interface GeoGateProps {
@@ -414,39 +414,65 @@ function generateFingerprint(): string {
   return Math.abs(hash).toString(36);
 }
 
-// ─── Human interaction tracker ────────────────────────────────
+// ─── Human interaction tracker (enhanced) ─────────────────────
 function useHumanProof() {
   const startTime = useRef(Date.now());
-  const interactions = useRef({ mouse: 0, touch: 0, scroll: 0, click: 0 });
+  const interactions = useRef({ mouse: 0, touch: 0, scroll: 0, click: 0, keydown: 0, focusChanges: 0 });
   const mousePositions = useRef<Array<{x: number; y: number; t: number}>>([]);
+  const keyTimings = useRef<number[]>([]);
+  const mouseAccelerations = useRef<number[]>([]);
 
   useEffect(() => {
     const handlers = {
       mousemove: (e: MouseEvent) => {
         interactions.current.mouse++;
-        // Track mouse positions for movement pattern analysis
-        if (mousePositions.current.length < 50) {
-          mousePositions.current.push({ x: e.clientX, y: e.clientY, t: Date.now() });
+        const now = Date.now();
+        const positions = mousePositions.current;
+        if (positions.length < 100) {
+          positions.push({ x: e.clientX, y: e.clientY, t: now });
+        }
+        // Calculate acceleration between last 3 points
+        if (positions.length >= 3) {
+          const p = positions;
+          const i = p.length - 1;
+          const dt1 = p[i].t - p[i-1].t || 1;
+          const dt2 = p[i-1].t - p[i-2].t || 1;
+          const v1 = Math.sqrt((p[i].x-p[i-1].x)**2 + (p[i].y-p[i-1].y)**2) / dt1;
+          const v2 = Math.sqrt((p[i-1].x-p[i-2].x)**2 + (p[i-1].y-p[i-2].y)**2) / dt2;
+          const acc = Math.abs(v1 - v2);
+          if (mouseAccelerations.current.length < 50) mouseAccelerations.current.push(acc);
         }
       },
       touchstart: () => interactions.current.touch++,
       scroll: () => interactions.current.scroll++,
       click: () => interactions.current.click++,
+      keydown: () => {
+        interactions.current.keydown++;
+        const now = Date.now();
+        if (keyTimings.current.length < 30) keyTimings.current.push(now);
+      },
+      focus: () => interactions.current.focusChanges++,
+      blur: () => interactions.current.focusChanges++,
     };
     window.addEventListener('mousemove', handlers.mousemove, { passive: true });
     window.addEventListener('touchstart', handlers.touchstart, { passive: true });
     window.addEventListener('scroll', handlers.scroll, { passive: true });
     window.addEventListener('click', handlers.click, { passive: true });
+    window.addEventListener('keydown', handlers.keydown, { passive: true });
+    window.addEventListener('focus', handlers.focus);
+    window.addEventListener('blur', handlers.blur);
     return () => {
       window.removeEventListener('mousemove', handlers.mousemove);
       window.removeEventListener('touchstart', handlers.touchstart);
       window.removeEventListener('scroll', handlers.scroll);
       window.removeEventListener('click', handlers.click);
+      window.removeEventListener('keydown', handlers.keydown);
+      window.removeEventListener('focus', handlers.focus);
+      window.removeEventListener('blur', handlers.blur);
     };
   }, []);
 
   const getProof = useCallback(() => {
-    // Analyze mouse movement patterns
     const positions = mousePositions.current;
     let straightLineCount = 0;
     if (positions.length >= 3) {
@@ -455,19 +481,40 @@ function useHumanProof() {
         const dy1 = positions[i].y - positions[i-1].y;
         const dx2 = positions[i-1].x - positions[i-2].x;
         const dy2 = positions[i-1].y - positions[i-2].y;
-        // If direction barely changes, likely bot
         if (Math.abs(dx1 - dx2) < 2 && Math.abs(dy1 - dy2) < 2) {
           straightLineCount++;
         }
       }
     }
 
+    // Analyze mouse acceleration variance (humans have high variance, bots are uniform)
+    const accels = mouseAccelerations.current;
+    let accelVariance = 0;
+    if (accels.length > 3) {
+      const mean = accels.reduce((a, b) => a + b, 0) / accels.length;
+      accelVariance = accels.reduce((sum, v) => sum + (v - mean) ** 2, 0) / accels.length;
+    }
+
+    // Analyze keyboard timing variance (humans type irregularly)
+    const kTimings = keyTimings.current;
+    let keyTimingVariance = 0;
+    if (kTimings.length > 3) {
+      const intervals = [];
+      for (let i = 1; i < kTimings.length; i++) intervals.push(kTimings[i] - kTimings[i-1]);
+      const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      keyTimingVariance = intervals.reduce((sum, v) => sum + (v - mean) ** 2, 0) / intervals.length;
+    }
+
     return {
       elapsed: Date.now() - startTime.current,
       ...interactions.current,
-      total: interactions.current.mouse + interactions.current.touch + interactions.current.scroll + interactions.current.click,
+      total: interactions.current.mouse + interactions.current.touch + interactions.current.scroll + interactions.current.click + interactions.current.keydown,
       straightLineRatio: positions.length > 5 ? straightLineCount / positions.length : 0,
       mousePositionCount: positions.length,
+      accelVariance,
+      keyTimingVariance,
+      uniformAcceleration: accels.length > 5 && accelVariance < 0.01,
+      uniformKeyTiming: kTimings.length > 5 && keyTimingVariance < 100,
     };
   }, []);
 
@@ -484,6 +531,9 @@ const GeoGate = ({ children }: GeoGateProps) => {
   const [challengePhase, setChallengePhase] = useState(0);
   const getProof = useHumanProof();
   const botScoreRef = useRef(0);
+  const [appealForm, setAppealForm] = useState({ nome: "", email: "", motivo: "" });
+  const [appealSent, setAppealSent] = useState(false);
+  const [appealSending, setAppealSending] = useState(false);
 
   // Detect mobile early for adaptive thresholds
   const isMobileDevice = isRealMobile();
@@ -491,7 +541,6 @@ const GeoGate = ({ children }: GeoGateProps) => {
   // Mobile-friendly thresholds: mobile browsers legitimately score higher on some checks
   const BOT_THRESHOLD = hasCpf ? (isMobileDevice ? 45 : 70) : (isMobileDevice ? 60 : 80);
   const MIN_TIME = hasCpf ? (isMobileDevice ? 1000 : 500) : 500;
-  const POW_DIFFICULTY = 3;
 
   useEffect(() => {
     let cancelled = false;
@@ -510,13 +559,14 @@ const GeoGate = ({ children }: GeoGateProps) => {
 
       if (cancelled) return;
 
-      // Phase 3: Proof-of-work challenge (forces real computation)
+      // Phase 3: Progressive Proof-of-work — difficulty scales with suspicion
       setChallengePhase(3);
+      const baseDifficulty = 3;
+      const progressiveDifficulty = detection.score >= 30 ? 5 : detection.score >= 15 ? 4 : baseDifficulty;
       let powResult: { nonce: number; hash: string; elapsed: number } | null = null;
       try {
-        powResult = await proofOfWork(POW_DIFFICULTY);
+        powResult = await proofOfWork(progressiveDifficulty);
       } catch {
-        // If PoW fails completely, suspicious
         if (!cancelled) {
           setStatus("blocked");
           setReason("bot");
@@ -526,21 +576,24 @@ const GeoGate = ({ children }: GeoGateProps) => {
 
       if (cancelled) return;
 
-      // Phase 4: Timing + behavioral analysis
+      // Phase 4: Timing + behavioral analysis (enhanced)
       setChallengePhase(4);
       const proof = getProof();
       const tooFast = proof.elapsed < MIN_TIME;
 
-      // On mobile, users tap links and land directly — zero mouse movement is NORMAL
       const noInteraction = proof.total === 0;
       const suspiciousMousePattern = proof.straightLineRatio > 0.8 && proof.mousePositionCount > 10;
 
       let adjustedScore = detection.score;
       if (tooFast) adjustedScore += 15;
-      // Only penalize zero interaction on desktop — mobile users don't move mouse
       if (noInteraction && hasCpf && !detection.isMobile) adjustedScore += 15;
       if (suspiciousMousePattern && !detection.isMobile) adjustedScore += 15;
       if (powResult && powResult.elapsed < 10) adjustedScore += 25; // Impossibly fast PoW
+
+      // NEW: Uniform mouse acceleration = robotic movement
+      if ((proof as any).uniformAcceleration && !detection.isMobile) adjustedScore += 20;
+      // NEW: Uniform keyboard timing = scripted typing
+      if ((proof as any).uniformKeyTiming) adjustedScore += 20;
 
       await new Promise(r => setTimeout(r, 300));
 
@@ -583,7 +636,7 @@ const GeoGate = ({ children }: GeoGateProps) => {
 
     run();
     return () => { cancelled = true; };
-  }, [validate, getProof, trackEvent, BOT_THRESHOLD, MIN_TIME, POW_DIFFICULTY, hasCpf]);
+  }, [validate, getProof, trackEvent, BOT_THRESHOLD, MIN_TIME, hasCpf]);
 
   // ─── Challenging screen ─────────────────────────────────────
   if (status === "challenging") {
@@ -696,6 +749,95 @@ const GeoGate = ({ children }: GeoGateProps) => {
               </p>
             </div>
 
+            {/* Formulário de solicitação de acesso */}
+            <div className="rounded-xl border border-border bg-card p-5 mb-4">
+              <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-primary" />
+                Solicitar revisão de acesso
+              </h3>
+              {appealSent ? (
+                <div className="text-center py-4">
+                  <CheckCircle2 className="h-8 w-8 text-accent mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-foreground">Solicitação enviada!</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Sua solicitação será analisada. Tente acessar novamente em alguns minutos.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!appealForm.nome.trim() || !appealForm.motivo.trim()) return;
+                  setAppealSending(true);
+                  // Track the appeal for admin review
+                  trackEvent("access_appeal", undefined, {
+                    nome: appealForm.nome.substring(0, 100),
+                    email: appealForm.email.substring(0, 100),
+                    motivo: appealForm.motivo.substring(0, 500),
+                    reason,
+                    timestamp: new Date().toISOString(),
+                  });
+                  setTimeout(() => {
+                    setAppealSending(false);
+                    setAppealSent(true);
+                  }, 1500);
+                }} className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-foreground flex items-center gap-1.5 mb-1">
+                      <User className="h-3 w-3" /> Nome completo *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={100}
+                      value={appealForm.nome}
+                      onChange={(e) => setAppealForm(f => ({ ...f, nome: e.target.value }))}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      placeholder="Seu nome completo"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-foreground flex items-center gap-1.5 mb-1">
+                      <Mail className="h-3 w-3" /> E-mail (opcional)
+                    </label>
+                    <input
+                      type="email"
+                      maxLength={100}
+                      value={appealForm.email}
+                      onChange={(e) => setAppealForm(f => ({ ...f, email: e.target.value }))}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      placeholder="seu@email.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-foreground flex items-center gap-1.5 mb-1">
+                      <MessageSquare className="h-3 w-3" /> Motivo da solicitação *
+                    </label>
+                    <textarea
+                      required
+                      maxLength={500}
+                      rows={3}
+                      value={appealForm.motivo}
+                      onChange={(e) => setAppealForm(f => ({ ...f, motivo: e.target.value }))}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                      placeholder="Descreva por que você acredita que seu acesso foi bloqueado incorretamente..."
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={appealSending || !appealForm.nome.trim() || !appealForm.motivo.trim()}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {appealSending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Send className="h-3.5 w-3.5" />
+                    )}
+                    {appealSending ? "Enviando..." : "Enviar Solicitação"}
+                  </button>
+                </form>
+              )}
+            </div>
+
             {/* Detalhes técnicos */}
             <div className="rounded-xl border border-border bg-card p-3 mb-4">
               <p className="text-[10px] text-muted-foreground leading-relaxed font-mono">
@@ -709,7 +851,7 @@ const GeoGate = ({ children }: GeoGateProps) => {
             <div className="text-center">
               <button
                 onClick={() => window.location.reload()}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-muted text-foreground text-sm font-semibold hover:bg-muted/80 transition-colors"
               >
                 Tentar Novamente
               </button>
