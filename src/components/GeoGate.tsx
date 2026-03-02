@@ -7,13 +7,17 @@ interface GeoGateProps {
   children: React.ReactNode;
 }
 
-// ─── Detect if running on real mobile device ─────────────────
+// ─── Detect if running on real mobile device (enhanced) ──────
 function isRealMobile(): boolean {
   const ua = navigator.userAgent;
   const hasMobileUA = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
   const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const smallScreen = Math.min(screen.width, screen.height) < 768;
-  return hasMobileUA && hasTouch && smallScreen;
+  const highDPR = window.devicePixelRatio >= 2;
+  const hasOrientation = 'DeviceOrientationEvent' in window;
+  const hasVibrate = 'vibrate' in navigator;
+  // Real mobile = UA + touch + (small screen OR high DPR) + at least one mobile-only API
+  return hasMobileUA && hasTouch && (smallScreen || highDPR) && (hasOrientation || hasVibrate);
 }
 
 // ─── Advanced bot detection (mobile-aware) ────────────────────
@@ -338,16 +342,28 @@ function runBotDetection(): { score: number; reasons: string[]; isMobile: boolea
 
   // ─── Mobile-specific positive signals (reduce score) ───────
   if (mobile) {
-    // Real mobile device has orientation API
     if ('DeviceOrientationEvent' in window) score -= 5;
-    // Real mobile has touch events
     if (navigator.maxTouchPoints > 1) score -= 5;
-    // Real mobile has small pixel ratio or high DPR
     if (window.devicePixelRatio >= 2) score -= 3;
-    // Connection type available on mobile
     if ('connection' in navigator && (navigator as any).connection?.type) score -= 3;
+    // NEW: Vibration API (mobile-only)
+    if ('vibrate' in navigator) score -= 3;
+    // NEW: Screen orientation API
+    if ('orientation' in screen) score -= 3;
+    // NEW: Battery API (mostly mobile)
+    if ('getBattery' in navigator) score -= 3;
+    // NEW: Real mobile has small physical screen
+    const physicalWidth = screen.width / (window.devicePixelRatio || 1);
+    if (physicalWidth < 500) score -= 5;
+    // NEW: Mobile network info (effective type like 4g, 3g)
+    if ('connection' in navigator) {
+      const conn = (navigator as any).connection;
+      if (conn?.effectiveType && ['4g', '3g', '2g', 'slow-2g'].includes(conn.effectiveType)) score -= 3;
+      if (conn?.saveData === true) score -= 5; // Data saver = very likely real mobile
+    }
+    // NEW: Device memory (low = real mobile)
+    if ('deviceMemory' in navigator && (navigator as any).deviceMemory <= 8) score -= 3;
 
-    // Ensure score doesn't go negative
     score = Math.max(0, score);
   }
 
@@ -721,19 +737,19 @@ const GeoGate = ({ children }: GeoGateProps) => {
               <ul className="space-y-2 text-xs text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="text-foreground font-bold mt-0.5">1.</span>
-                  <span>Utilize um navegador atualizado (Chrome, Firefox ou Safari) sem extensões de automação.</span>
+                  <span>Acesse pelo navegador padrão do seu celular (Google Chrome ou Safari).</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-foreground font-bold mt-0.5">2.</span>
-                  <span>Desative qualquer VPN, proxy ou serviço de rede privada antes de acessar.</span>
+                  <span>Desative qualquer VPN ou proxy antes de acessar.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-foreground font-bold mt-0.5">3.</span>
-                  <span>Acesse diretamente pelo navegador — links de aplicativos de mensagens podem ser bloqueados.</span>
+                  <span>Abra o link diretamente no navegador — evite abrir por dentro do WhatsApp, Telegram ou Instagram.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-foreground font-bold mt-0.5">4.</span>
-                  <span>Certifique-se de estar acessando de uma conexão residencial ou móvel no Brasil ou Portugal.</span>
+                  <span>Use sua rede Wi-Fi residencial ou dados móveis (4G/5G) no Brasil ou Portugal.</span>
                 </li>
               </ul>
             </div>
