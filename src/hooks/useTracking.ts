@@ -12,8 +12,28 @@ function getSessionId(): string {
   return id;
 }
 
-function isMobile(): boolean {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+function getMobileDetails(): Record<string, unknown> {
+  const ua = navigator.userAgent;
+  const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const conn = (navigator as any).connection;
+  return {
+    is_mobile: mobile,
+    screen: `${screen.width}x${screen.height}`,
+    dpr: window.devicePixelRatio || 1,
+    touch_points: navigator.maxTouchPoints || 0,
+    platform: navigator.platform || '',
+    languages: (navigator.languages || []).join(','),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    has_touch: 'ontouchstart' in window,
+    has_orientation: 'DeviceOrientationEvent' in window,
+    has_vibrate: 'vibrate' in navigator,
+    connection_type: conn?.effectiveType || '',
+    connection_downlink: conn?.downlink || 0,
+    save_data: conn?.saveData || false,
+    device_memory: (navigator as any).deviceMemory || 0,
+    hardware_concurrency: navigator.hardwareConcurrency || 0,
+    color_depth: screen.colorDepth || 0,
+  };
 }
 
 export function useTracking() {
@@ -21,14 +41,14 @@ export function useTracking() {
 
   const validate = useCallback(async (): Promise<{ allowed: boolean; reason?: string }> => {
     try {
+      const deviceInfo = getMobileDetails();
       const res = await supabase.functions.invoke("track", {
         body: {
           action: "validate",
           session_id: sessionId.current,
           user_agent: navigator.userAgent,
           referrer: document.referrer,
-          is_mobile: isMobile(),
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          ...deviceInfo,
         },
       });
 

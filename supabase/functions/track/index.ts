@@ -372,7 +372,10 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, session_id, cpf, event_type, metadata, user_agent, referrer, is_mobile, timezone } = body;
+    const { action, session_id, cpf, event_type, metadata, user_agent, referrer, is_mobile, timezone,
+      screen: screenSize, dpr, touch_points, has_touch, has_orientation, has_vibrate,
+      connection_type, connection_downlink, save_data, device_memory, hardware_concurrency, color_depth,
+      platform, languages } = body;
 
     const ip = getClientIp(req);
     const ua = user_agent || req.headers.get('user-agent') || '';
@@ -383,7 +386,10 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log(`[track] action=${action} ip=${ip} bot=${bot} ua=${ua.substring(0, 80)}`);
+    console.log(`[track] action=${action} ip=${ip} bot=${bot} mobile=${is_mobile} ua=${ua.substring(0, 80)}`);
+    if (is_mobile) {
+      console.log(`[track] Mobile details: screen=${screenSize} dpr=${dpr} touch=${touch_points} orientation=${has_orientation} vibrate=${has_vibrate} conn=${connection_type} downlink=${connection_downlink} saveData=${save_data} mem=${device_memory} cores=${hardware_concurrency}`);
+    }
 
     // Log all headers for debugging IP resolution
     const headerEntries: Record<string, string> = {};
@@ -440,6 +446,37 @@ Deno.serve(async (req) => {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+
+      // Server-side mobile spoofing detection
+      const claimsMobile = is_mobile || /Android|iPhone|iPad|iPod/i.test(ua);
+      if (claimsMobile) {
+        const suspiciousMobile: string[] = [];
+        // Mobile should have touch
+        if (!has_touch && touch_points === 0) suspiciousMobile.push('no_touch');
+        // Mobile should have orientation or vibrate
+        if (!has_orientation && !has_vibrate) suspiciousMobile.push('no_mobile_api');
+        // Desktop-like screen on "mobile"
+        if (screenSize) {
+          const [w] = screenSize.split('x').map(Number);
+          if (w > 1920) suspiciousMobile.push('large_screen');
+        }
+        // DPR=1 is unusual for real mobile (most have 2-3)
+        if (dpr && dpr === 1 && !(/iPad/i.test(ua))) suspiciousMobile.push('low_dpr');
+        // High core count = server/desktop emulating mobile
+        if (hardware_concurrency && hardware_concurrency > 16) suspiciousMobile.push('high_cores');
+
+        if (suspiciousMobile.length >= 3) {
+          console.log(`[track] Fake mobile detected: ${ip} reasons=${suspiciousMobile.join(',')}`);
+          await supabase.from('blocked_ips').upsert(
+            { ip_address: ip, reason: `Fake mobile: ${suspiciousMobile.join(',')}` },
+            { onConflict: 'ip_address' }
+          );
+          return new Response(JSON.stringify({ allowed: false, reason: 'bot' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
 
       const geo = await getGeoData(ip);

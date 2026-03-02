@@ -23,11 +23,10 @@ const App = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<GeoGate><Index /></GeoGate>} />
-          <Route path="/pendencias" element={<PendenciasRedirect />} />
+          <Route path="/pendencias" element={<GeoGate><PendenciasRedirect /></GeoGate>} />
           <Route path="/:cpf" element={<GeoGate><Index /></GeoGate>} />
           <Route path="/admin" element={<Admin />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<GeoGate><NotFound /></GeoGate>} />
         </Routes>
         <ChatWidget />
       </BrowserRouter>
