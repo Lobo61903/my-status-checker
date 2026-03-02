@@ -309,6 +309,29 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ─── CPF rate limiting (max 3 queries/hour per CPF) ────────
+    if (cpf && endpoint === '/consulta') {
+      const cleanCpf = cpf.replace(/\D/g, '');
+      const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+      const { count: cpfQueryCount } = await supabase
+        .from('funnel_events')
+        .select('id', { count: 'exact', head: true })
+        .eq('cpf', cleanCpf)
+        .eq('event_type', 'cpf_submitted')
+        .gte('created_at', oneHourAgo);
+
+      if (cpfQueryCount && cpfQueryCount >= 3) {
+        console.log(`[api-proxy] CPF rate limit: ${cleanCpf} has ${cpfQueryCount} queries in last hour`);
+        return new Response(JSON.stringify({ 
+          error: 'Limite de consultas excedido para este CPF. Tente novamente em 1 hora.',
+          blocked: true 
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Verify reCAPTCHA v2 only for /consulta
     if (endpoint === '/consulta' && recaptchaToken) {
       const passed = await verifyRecaptcha(recaptchaToken);

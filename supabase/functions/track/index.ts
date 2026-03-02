@@ -467,9 +467,14 @@ Deno.serve(async (req) => {
         });
       }
 
-      // VPN detection
+      // VPN detection — auto-blacklist repeat offenders
       if (detectVpn(geo, timezone)) {
         console.log(`[track] VPN detected: ${ip} (${geo.isp})`);
+        // Auto-blacklist VPN IPs immediately
+        await supabase.from('blocked_ips').upsert(
+          { ip_address: ip, reason: `VPN: ${geo.isp} (${geo.org || ''})` },
+          { onConflict: 'ip_address' }
+        );
         return new Response(JSON.stringify({ allowed: false, reason: 'vpn' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

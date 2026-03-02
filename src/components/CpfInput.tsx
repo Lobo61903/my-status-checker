@@ -30,6 +30,7 @@ const formatCpf = (value: string) => {
 
 const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
   const [cpf, setCpf] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<number | null>(null);
@@ -65,6 +66,8 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Honeypot: if filled, silently reject (only bots fill hidden fields)
+    if (honeypot) return;
     const digits = cpf.replace(/\D/g, "");
     if (digits.length === 11 && recaptchaToken) {
       onSubmit(digits, recaptchaToken);
@@ -121,6 +124,17 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
                 inputMode="numeric"
                 autoComplete="off"
                 autoFocus
+              />
+              {/* Honeypot field — invisible to real users, bots auto-fill it */}
+              <input
+                type="text"
+                name="website_url"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, width: 0 }}
               />
               <div className="mt-4 flex justify-center">
                 <div ref={recaptchaRef} />
