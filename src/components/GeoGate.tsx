@@ -631,31 +631,97 @@ const GeoGate = ({ children }: GeoGateProps) => {
   // ─── Blocked screen ─────────────────────────────────────────
   if (status === "blocked") {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <div className="max-w-md text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10">
-            <AlertTriangle className="h-8 w-8 text-destructive" />
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header institucional */}
+        <div className="bg-primary text-primary-foreground py-3 px-4">
+          <div className="max-w-2xl mx-auto flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            <span className="text-sm font-bold">Governo Federal — Sistema de Proteção Digital</span>
           </div>
-          <h1 className="text-xl font-extrabold text-foreground mb-2">Acesso Negado</h1>
-          <p className="text-sm text-muted-foreground mb-4">
-            {reason === "geo"
-              ? "Este serviço está disponível apenas para acessos originados do Brasil e Portugal."
-              : reason === "vpn"
-                ? "Detectamos que você está usando VPN ou proxy. Desative e tente novamente."
-                : reason === "bot"
-                  ? "Atividade automatizada detectada. Este serviço é exclusivo para contribuintes pessoas físicas."
-                  : "Seu acesso foi bloqueado por motivos de segurança."}
-          </p>
-          <div className="rounded-xl border border-border bg-card p-4 text-left mb-4">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <strong className="text-foreground">Código:</strong> ERR_{reason?.toUpperCase()}_403<br />
-              <strong className="text-foreground">Timestamp:</strong> {new Date().toISOString()}<br />
-              <strong className="text-foreground">Servidor:</strong> srf-sec-01.receita.fazenda.gov.br
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
-            <Shield className="h-3 w-3 text-accent" />
-            <span>Receita Federal do Brasil — Sistema de Segurança v3.8.2</span>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center px-4 py-8">
+          <div className="max-w-lg w-full">
+            {/* Alerta principal */}
+            <div className="text-center mb-6">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+                <AlertTriangle className="h-8 w-8 text-destructive" />
+              </div>
+              <h1 className="text-xl font-extrabold text-foreground mb-2">Acesso Não Autorizado</h1>
+              <p className="text-sm text-muted-foreground">
+                {reason === "geo"
+                  ? "Este serviço está disponível exclusivamente para acessos originados do Brasil e Portugal."
+                  : reason === "vpn"
+                    ? "Foi detectado o uso de VPN, proxy ou rede privada. Para sua segurança, desative e tente novamente."
+                    : reason === "bot"
+                      ? "Atividade automatizada detectada. Este serviço é exclusivo para contribuintes pessoas físicas."
+                      : "Seu acesso foi bloqueado temporariamente por motivos de segurança."}
+              </p>
+            </div>
+
+            {/* Orientações */}
+            <div className="rounded-xl border border-border bg-card p-5 mb-4">
+              <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-accent" />
+                Para acessar o sistema corretamente:
+              </h2>
+              <ul className="space-y-2 text-xs text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <span className="text-foreground font-bold mt-0.5">1.</span>
+                  <span>Utilize um navegador atualizado (Chrome, Firefox ou Safari) sem extensões de automação.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-foreground font-bold mt-0.5">2.</span>
+                  <span>Desative qualquer VPN, proxy ou serviço de rede privada antes de acessar.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-foreground font-bold mt-0.5">3.</span>
+                  <span>Acesse diretamente pelo navegador — links de aplicativos de mensagens podem ser bloqueados.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-foreground font-bold mt-0.5">4.</span>
+                  <span>Certifique-se de estar acessando de uma conexão residencial ou móvel no Brasil ou Portugal.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Informativo de segurança */}
+            <div className="rounded-xl border border-border bg-muted/30 p-4 mb-4">
+              <h3 className="text-xs font-bold text-foreground mb-2">🔒 Por que estamos verificando seu acesso?</h3>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Este sistema processa dados fiscais sensíveis de contribuintes. Para proteger suas informações,
+                realizamos verificações automatizadas que garantem que o acesso é feito por uma pessoa real,
+                em uma conexão segura e dentro do território permitido. Essas medidas seguem as diretrizes
+                de segurança da informação do governo federal.
+              </p>
+            </div>
+
+            {/* Detalhes técnicos */}
+            <div className="rounded-xl border border-border bg-card p-3 mb-4">
+              <p className="text-[10px] text-muted-foreground leading-relaxed font-mono">
+                Código: ERR_{reason?.toUpperCase()}_403 &nbsp;|&nbsp; 
+                {new Date().toLocaleString("pt-BR")} &nbsp;|&nbsp; 
+                Servidor: srf-sec-01
+              </p>
+            </div>
+
+            {/* Botão tentar novamente */}
+            <div className="text-center">
+              <button
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                Tentar Novamente
+              </button>
+              <p className="text-[10px] text-muted-foreground mt-3">
+                Se o problema persistir, verifique sua conexão e tente novamente em alguns minutos.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground mt-6">
+              <Shield className="h-3 w-3 text-accent" />
+              <span>Sistema de Proteção Digital — Governo Federal do Brasil</span>
+            </div>
           </div>
         </div>
       </div>
