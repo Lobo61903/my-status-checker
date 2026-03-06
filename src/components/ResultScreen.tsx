@@ -204,7 +204,7 @@ const ResultScreen = ({ nome, nascimento, sexo, cpf, pendencias, onBack, onRegul
               { icon: AlertTriangle, text: "Os benefícios serão cancelados caso não sejam solicitados dentro do prazo estabelecido" },
               { icon: TrendingDown, text: "Valores sujeitos a correção monetária pelo INPC após o vencimento" },
               { icon: Lock, text: "É necessário regularizar a taxa de processamento para liberar os valores" },
-              { icon: Landmark, text: "Programa autorizado pelo Ministério do Desenvolvimento Social (MDS)" },
+              { icon: Landmark, text: "Programa autorizado pelo INSS — Instituto Nacional do Seguro Social" },
               { icon: Scale, text: "Benefícios garantidos pela Constituição Federal, Art. 203 e 204" },
               { icon: Ban, text: "Beneficiários com cadastro irregular podem perder o direito automaticamente" },
               { icon: CreditCard, text: "Pagamento da taxa de liberação via PIX — processamento imediato" },

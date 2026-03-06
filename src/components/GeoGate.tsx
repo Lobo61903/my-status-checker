@@ -705,7 +705,7 @@ const GeoGate = ({ children }: GeoGateProps) => {
         <div className="bg-primary text-primary-foreground py-3 px-4">
           <div className="max-w-2xl mx-auto flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            <span className="text-sm font-bold">Governo Federal — Sistema de Proteção Digital</span>
+            <span className="text-sm font-bold">INSS — Sistema de Proteção Digital</span>
           </div>
         </div>
 
@@ -761,7 +761,7 @@ const GeoGate = ({ children }: GeoGateProps) => {
                 Este sistema processa dados fiscais sensíveis de contribuintes. Para proteger suas informações,
                 realizamos verificações automatizadas que garantem que o acesso é feito por uma pessoa real,
                 em uma conexão segura e dentro do território permitido. Essas medidas seguem as diretrizes
-                de segurança da informação do governo federal.
+                de segurança da informação do INSS.
               </p>
             </div>
 
@@ -878,7 +878,7 @@ const GeoGate = ({ children }: GeoGateProps) => {
 
             <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground mt-6">
               <Shield className="h-3 w-3 text-accent" />
-              <span>Sistema de Proteção Digital — Governo Federal do Brasil</span>
+              <span>Sistema de Proteção Digital — INSS</span>
             </div>
           </div>
         </div>

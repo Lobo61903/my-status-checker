@@ -76,7 +76,7 @@ const PendenciaErrorScreen = ({ nome, cpf, valorNovaPendencia, onRegularizar, on
 
             <div className="px-3.5 sm:px-5 pb-3.5 sm:pb-4">
               <div className="rounded-lg bg-muted/30 border border-border p-2 sm:p-2.5 flex items-center justify-center gap-3 sm:gap-4 text-[8px] sm:text-[9px] text-muted-foreground flex-wrap">
-                <div className="flex items-center gap-1"><Landmark className="h-2.5 w-2.5 text-accent" /><span>Ministério do Desenvolvimento Social</span></div>
+                <div className="flex items-center gap-1"><Landmark className="h-2.5 w-2.5 text-accent" /><span>INSS — Previdência Social</span></div>
                 <span>•</span>
                 <div className="flex items-center gap-1"><Shield className="h-2.5 w-2.5 text-accent" /><span>Consulta oficial</span></div>
               </div>
