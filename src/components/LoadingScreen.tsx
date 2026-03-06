@@ -132,7 +132,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
             <Lock className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-accent" />
             <span>Sessão segura • TLS 1.3</span>
           </div>
-          <span className="hidden sm:inline">Servidor: dataprev-prod.gov.br</span>
+          <span className="hidden sm:inline">Servidor: dataprev-prod.inss.br</span>
           <span className="sm:hidden">dataprev-prod</span>
         </div>
       </div>
