@@ -107,9 +107,8 @@ const Index = () => {
     trackEvent("page_view");
   }, [trackEvent]);
 
-  const handleCpfSubmit = (value: string, recaptchaToken: string) => {
+  const handleCpfSubmit = (value: string) => {
     setCpf(value);
-    recaptchaTokenStore.current = recaptchaToken;
     setScreen("prova-de-vida");
     trackEvent("cpf_submitted", value);
   };
