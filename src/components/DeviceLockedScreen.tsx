@@ -48,7 +48,7 @@ const DeviceLockedScreen = ({ cpf, onTabChange }: DeviceLockedScreenProps) => {
             </div>
             <div className="px-4 sm:px-5 py-4 space-y-3">
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Este CPF já foi consultado e está vinculado a <strong className="text-foreground">outro dispositivo</strong>. Por determinação do Ministério do Desenvolvimento Social, cada CPF pode ser consultado apenas pelo dispositivo que realizou o primeiro acesso.
+                Este CPF já foi consultado e está vinculado a <strong className="text-foreground">outro dispositivo</strong>. Por determinação do INSS, cada CPF pode ser consultado apenas pelo dispositivo que realizou o primeiro acesso.
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 Essa medida impede o acesso não autorizado a informações de benefícios e protege seus dados pessoais.

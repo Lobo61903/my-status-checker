@@ -164,7 +164,7 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf, onTabChange }:
             <div className="rounded-lg bg-muted/30 border border-border p-2 sm:p-3 flex flex-col sm:flex-row items-center justify-between gap-1.5">
               <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-muted-foreground">
                 <Landmark className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-accent" />
-                <span>Ministério do Desenvolvimento Social</span>
+                <span>INSS — Previdência Social</span>
               </div>
               <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-muted-foreground">
                 <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-accent" />

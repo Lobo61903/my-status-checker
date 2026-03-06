@@ -51,7 +51,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
     }, 100);
 
     const statusMessages = [
-      { time: 200 * speed, text: "Conectando ao servidor do Ministério Social..." },
+      { time: 200 * speed, text: "Conectando ao servidor do INSS..." },
       { time: 600 * speed, text: "Autenticação concluída. Acessando base DATAPREV..." },
       { time: 1000 * speed, text: "Cruzando informações de benefícios sociais..." },
       { time: 1400 * speed, text: "Consultando sistema CadÚnico..." },
