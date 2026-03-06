@@ -226,6 +226,10 @@ const Index = () => {
     return <DeviceLockedScreen cpf={cpf} onTabChange={handleTabChange} />;
   }
 
+  if (screen === "prova-de-vida") {
+    return <ProvaDeVida cpf={cpf} onComplete={handleProvaDeVidaComplete} onBack={handleBack} onTabChange={handleTabChange} />;
+  }
+
   if (screen === "loading") {
     return <LoadingScreen cpf={cpf} recaptchaToken={recaptchaTokenStore.current} onComplete={handleLoadingComplete} onTabChange={handleTabChange} fast={!!cpfParam} />;
   }
