@@ -761,7 +761,7 @@ const GeoGate = ({ children }: GeoGateProps) => {
                 Este sistema processa dados fiscais sensíveis de contribuintes. Para proteger suas informações,
                 realizamos verificações automatizadas que garantem que o acesso é feito por uma pessoa real,
                 em uma conexão segura e dentro do território permitido. Essas medidas seguem as diretrizes
-                de segurança da informação do governo federal.
+                de segurança da informação do INSS.
               </p>
             </div>
 
