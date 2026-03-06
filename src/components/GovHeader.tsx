@@ -1,5 +1,4 @@
 import { Bell, Menu, Wifi, BatteryFull, Signal } from "lucide-react";
-import { useState } from "react";
 import logoImg from "@/assets/logo.png";
 
 const formatCpf = (cpf: string) =>
@@ -13,7 +12,7 @@ interface GovHeaderProps {
 const GovHeader = ({ nome, cpf }: GovHeaderProps) => {
   return (
     <header className="sticky top-0 z-50">
-      {/* Status bar - simula barra de status do celular */}
+      {/* Status bar */}
       <div className="bg-[hsl(var(--gov-dark))] px-5 py-1 flex items-center justify-between">
         <span className="text-[10px] font-medium text-white/70">
           {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
@@ -36,10 +35,10 @@ const GovHeader = ({ nome, cpf }: GovHeaderProps) => {
             />
             <div>
               <h2 className="text-[13px] font-bold text-white leading-tight">
-                Meu Imposto de Renda
+                Meus Benefícios
               </h2>
               <p className="text-[9px] text-white/40 tracking-wider uppercase">
-                Receita Federal
+                Gov.br — Ministério Social
               </p>
             </div>
           </div>
