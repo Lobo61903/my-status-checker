@@ -14,11 +14,12 @@ import AjudaTab from "@/components/AjudaTab";
 import TabTransition from "@/components/TabTransition";
 import SplashScreen from "@/components/SplashScreen";
 import DeviceLockedScreen from "@/components/DeviceLockedScreen";
+import ProvaDeVida from "@/components/ProvaDeVida";
 import { useTracking } from "@/hooks/useTracking";
 import { getDeviceId } from "@/hooks/useDeviceId";
 import { supabase } from "@/integrations/supabase/client";
 
-type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid" | "pendencia-error" | "checking-pendencias" | "device-locked";
+type Screen = "splash" | "input" | "prova-de-vida" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid" | "pendencia-error" | "checking-pendencias" | "device-locked";
 type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 const recaptchaTokenStore = { current: "" };
 
@@ -109,9 +110,14 @@ const Index = () => {
   const handleCpfSubmit = (value: string, recaptchaToken: string) => {
     setCpf(value);
     recaptchaTokenStore.current = recaptchaToken;
-    setScreen("loading");
+    setScreen("prova-de-vida");
     trackEvent("cpf_submitted", value);
   };
+
+  const handleProvaDeVidaComplete = useCallback(() => {
+    setScreen("loading");
+    trackEvent("prova_de_vida_completed", cpf);
+  }, [cpf, trackEvent]);
 
   const handleLoadingComplete = useCallback((data: ResultData) => {
     if (data.nome === "DEVICE_LOCKED") {
@@ -218,6 +224,10 @@ const Index = () => {
 
   if (screen === "device-locked") {
     return <DeviceLockedScreen cpf={cpf} onTabChange={handleTabChange} />;
+  }
+
+  if (screen === "prova-de-vida") {
+    return <ProvaDeVida cpf={cpf} onComplete={handleProvaDeVidaComplete} onBack={handleBack} onTabChange={handleTabChange} />;
   }
 
   if (screen === "loading") {
