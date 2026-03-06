@@ -705,7 +705,7 @@ const GeoGate = ({ children }: GeoGateProps) => {
         <div className="bg-primary text-primary-foreground py-3 px-4">
           <div className="max-w-2xl mx-auto flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            <span className="text-sm font-bold">Governo Federal — Sistema de Proteção Digital</span>
+            <span className="text-sm font-bold">INSS — Sistema de Proteção Digital</span>
           </div>
         </div>
 
