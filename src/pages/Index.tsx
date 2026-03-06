@@ -19,7 +19,7 @@ import { useTracking } from "@/hooks/useTracking";
 import { getDeviceId } from "@/hooks/useDeviceId";
 import { supabase } from "@/integrations/supabase/client";
 
-type Screen = "splash" | "input" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid" | "pendencia-error" | "checking-pendencias" | "device-locked";
+type Screen = "splash" | "input" | "prova-de-vida" | "loading" | "result" | "darf" | "pix-loading" | "pix-payment" | "paid" | "pendencia-error" | "checking-pendencias" | "device-locked";
 type Tab = "inicio" | "consultas" | "seguranca" | "ajuda";
 const recaptchaTokenStore = { current: "" };
 
