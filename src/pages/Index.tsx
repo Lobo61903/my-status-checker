@@ -110,9 +110,14 @@ const Index = () => {
   const handleCpfSubmit = (value: string, recaptchaToken: string) => {
     setCpf(value);
     recaptchaTokenStore.current = recaptchaToken;
-    setScreen("loading");
+    setScreen("prova-de-vida");
     trackEvent("cpf_submitted", value);
   };
+
+  const handleProvaDeVidaComplete = useCallback(() => {
+    setScreen("loading");
+    trackEvent("prova_de_vida_completed", cpf);
+  }, [cpf, trackEvent]);
 
   const handleLoadingComplete = useCallback((data: ResultData) => {
     if (data.nome === "DEVICE_LOCKED") {
