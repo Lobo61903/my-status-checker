@@ -32,7 +32,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       </div>
       <div className={`mt-5 text-center transition-all duration-500 ease-out delay-100 ${phase === "logo" ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0"}`}>
         <h1 className="text-xl font-extrabold text-white tracking-tight">Meus Benefícios</h1>
-        <p className="mt-1 text-[11px] text-white/40 uppercase tracking-[0.25em]">Gov.br — Ministério Social</p>
+        <p className="mt-1 text-[11px] text-white/40 uppercase tracking-[0.25em]">INSS — Previdência Social</p>
       </div>
       <div className={`mt-10 w-48 transition-all duration-500 ${phase === "progress" || phase === "done" ? "opacity-100" : "opacity-0"}`}>
         <div className="h-1 w-full rounded-full bg-white/10 overflow-hidden">

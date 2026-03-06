@@ -12,7 +12,7 @@ const tips = [
   { icon: Smartphone, title: "Mantenha seu dispositivo seguro", desc: "Use senhas fortes, biometria e mantenha seu sistema atualizado." },
   { icon: WifiOff, title: "Evite redes Wi-Fi públicas", desc: "Não acesse dados sensíveis em redes abertas. Use dados móveis quando possível." },
   { icon: AlertTriangle, title: "Desconfie de mensagens urgentes", desc: "Golpistas usam urgência para enganar. O Governo não envia cobranças por SMS ou WhatsApp." },
-  { icon: KeyRound, title: "Use autenticação em dois fatores", desc: "Ative a verificação em 2 etapas em todas as suas contas Gov.br." },
+  { icon: KeyRound, title: "Use autenticação em dois fatores", desc: "Ative a verificação em 2 etapas em todas as suas contas do INSS." },
 ];
 
 const SegurancaTab = ({ onTabChange }: SegurancaTabProps) => {

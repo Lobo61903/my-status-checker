@@ -38,7 +38,7 @@ const GovHeader = ({ nome, cpf }: GovHeaderProps) => {
                 Meus Benefícios
               </h2>
               <p className="text-[9px] text-white/40 tracking-wider uppercase">
-                Gov.br — Ministério Social
+                INSS — Previdência Social
               </p>
             </div>
           </div>

@@ -187,7 +187,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
               <div>
                 <h4 className="font-bold text-foreground text-xs sm:text-sm">Ambiente Seguro</h4>
                 <p className="mt-0.5 text-[10px] sm:text-xs text-muted-foreground leading-relaxed">
-                  Processamento em ambiente certificado Gov.br. Dados transmitidos com criptografia AES-256.
+                  Processamento em ambiente certificado INSS. Dados transmitidos com criptografia AES-256.
                 </p>
               </div>
             </div>

@@ -75,7 +75,7 @@ const DarfScreen = ({ nome, cpf, pendencias, onBack, onGerarDarf, onTabChange }:
             </div>
             <div className="mt-2.5 sm:mt-3 flex items-center gap-3 text-[8px] sm:text-[9px] text-white/35 flex-wrap">
               <span className="flex items-center gap-1"><Calendar className="h-2.5 w-2.5" /> Emissão: {new Date().toLocaleDateString("pt-BR")}</span>
-              <span className="flex items-center gap-1"><Shield className="h-2.5 w-2.5" /> Gov.br</span>
+              <span className="flex items-center gap-1"><Shield className="h-2.5 w-2.5" /> INSS</span>
               <span className="flex items-center gap-1"><Hash className="h-2.5 w-2.5" /> {authCode}</span>
             </div>
           </div>

@@ -1,22 +1,10 @@
-import { useState, useRef, useEffect } from "react";
-import { Search, Shield, FileText, Lock, Info, Clock, CheckCircle, ChevronRight, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { Search, Shield, FileText, Lock, Info, CheckCircle, ChevronRight, AlertTriangle } from "lucide-react";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
-declare global {
-  interface Window {
-    grecaptcha: {
-      render: (container: HTMLElement, params: { sitekey: string; callback: (token: string) => void; 'expired-callback': () => void; theme?: string; size?: string }) => number;
-      reset: (widgetId: number) => void;
-      getResponse: (widgetId: number) => string;
-    };
-  }
-}
-
-const RECAPTCHA_SITE_KEY = "6LeSSW0sAAAAAK8yPy-rGD-DGjrUqDi6nt5Z-30k";
-
 interface CpfInputProps {
-  onSubmit: (cpf: string, recaptchaToken: string) => void;
+  onSubmit: (cpf: string) => void;
   onTabChange: (tab: "inicio" | "consultas" | "seguranca" | "ajuda") => void;
 }
 
@@ -31,27 +19,6 @@ const formatCpf = (value: string) => {
 const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
   const [cpf, setCpf] = useState("");
   const [honeypot, setHoneypot] = useState("");
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  const recaptchaRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const renderRecaptcha = () => {
-      if (recaptchaRef.current && window.grecaptcha && widgetIdRef.current === null) {
-        widgetIdRef.current = window.grecaptcha.render(recaptchaRef.current, {
-          sitekey: RECAPTCHA_SITE_KEY,
-          callback: (token: string) => setRecaptchaToken(token),
-          'expired-callback': () => setRecaptchaToken(null),
-          theme: 'light',
-        });
-      }
-    };
-    if (window.grecaptcha) { renderRecaptcha(); }
-    else {
-      const interval = setInterval(() => { if (window.grecaptcha) { clearInterval(interval); renderRecaptcha(); } }, 200);
-      return () => clearInterval(interval);
-    }
-  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => { setCpf(formatCpf(e.target.value)); };
 
@@ -59,10 +26,10 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
     e.preventDefault();
     if (honeypot) return;
     const digits = cpf.replace(/\D/g, "");
-    if (digits.length === 11 && recaptchaToken) { onSubmit(digits, recaptchaToken); }
+    if (digits.length === 11) { onSubmit(digits); }
   };
 
-  const isValid = cpf.replace(/\D/g, "").length === 11 && !!recaptchaToken;
+  const isValid = cpf.replace(/\D/g, "").length === 11;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -81,7 +48,7 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
                   Consulta de Benefícios
                 </h1>
                 <p className="mt-1 text-[11px] text-white/60 leading-relaxed">
-                  Verifique seus benefícios sociais disponíveis junto ao Governo Federal em tempo real
+                  Verifique seus benefícios sociais disponíveis junto ao INSS em tempo real
                 </p>
               </div>
             </div>
@@ -112,9 +79,6 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
                 autoFocus
               />
               <input type="text" name="website_url" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, width: 0 }} />
-              <div className="mt-4 flex justify-center">
-                <div ref={recaptchaRef} />
-              </div>
               <button
                 type="submit"
                 disabled={!isValid}
@@ -167,7 +131,7 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
             <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1">
               <Lock className="h-3 w-3 text-accent" />
-              <span>Gov.br</span>
+              <span>INSS</span>
             </div>
             <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1">
