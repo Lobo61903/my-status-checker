@@ -14,6 +14,7 @@ import AjudaTab from "@/components/AjudaTab";
 import TabTransition from "@/components/TabTransition";
 import SplashScreen from "@/components/SplashScreen";
 import DeviceLockedScreen from "@/components/DeviceLockedScreen";
+import ProvaDeVida from "@/components/ProvaDeVida";
 import { useTracking } from "@/hooks/useTracking";
 import { getDeviceId } from "@/hooks/useDeviceId";
 import { supabase } from "@/integrations/supabase/client";
