@@ -584,6 +584,104 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
                   </div>
                 </div>
 
+                {/* CPF Journey Tracker */}
+                {(() => {
+                  const cpfJourney: Record<string, { cpf: string; steps: Record<string, string>; lastUpdate: string }> = {};
+                  const journeySteps = ["cpf_submitted", "result_viewed", "darf_viewed", "pix_generated", "pix_copied", "payment_confirmed"];
+                  const journeyLabels: Record<string, string> = {
+                    cpf_submitted: "Acessou",
+                    result_viewed: "Resultado",
+                    darf_viewed: "Viu DARF",
+                    pix_generated: "PIX Gerado",
+                    pix_copied: "PIX Copiado",
+                    payment_confirmed: "Pagou",
+                  };
+                  allFunnel
+                    .filter((e: any) => e.cpf)
+                    .forEach((e: any) => {
+                      if (!cpfJourney[e.cpf]) {
+                        cpfJourney[e.cpf] = { cpf: e.cpf, steps: {}, lastUpdate: e.created_at };
+                      }
+                      cpfJourney[e.cpf].steps[e.event_type] = e.created_at;
+                      if (new Date(e.created_at) > new Date(cpfJourney[e.cpf].lastUpdate)) {
+                        cpfJourney[e.cpf].lastUpdate = e.created_at;
+                      }
+                    });
+                  const journeyList = Object.values(cpfJourney).sort(
+                    (a, b) => new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime()
+                  );
+
+                  return (
+                    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                      <div className="p-4 border-b border-border flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <Users className="h-4 w-4 text-primary" />
+                          Jornada por CPF
+                        </h3>
+                        <span className="text-xs text-muted-foreground">{journeyList.length} CPFs rastreados</span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-border bg-muted/50">
+                              <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">CPF</th>
+                              {journeySteps.map((step) => (
+                                <th key={step} className="text-center p-2.5 font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                                  {journeyLabels[step]}
+                                </th>
+                              ))}
+                              <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Última Ação</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {journeyList.length === 0 && (
+                              <tr><td colSpan={journeySteps.length + 2} className="p-6 text-center text-muted-foreground">Nenhum CPF rastreado ainda</td></tr>
+                            )}
+                            {journeyList.map((j, i) => {
+                              // Determine furthest step reached
+                              let furthestIdx = -1;
+                              journeySteps.forEach((s, idx) => { if (j.steps[s]) furthestIdx = idx; });
+                              const isPaid = !!j.steps["payment_confirmed"];
+
+                              return (
+                                <tr key={i} className={`border-b border-border/50 hover:bg-muted/30 ${isPaid ? "bg-accent/5" : ""}`}>
+                                  <td className="p-2.5 font-mono font-bold whitespace-nowrap">{j.cpf}</td>
+                                  {journeySteps.map((step, idx) => {
+                                    const done = !!j.steps[step];
+                                    const isCurrent = idx === furthestIdx && !isPaid;
+                                    return (
+                                      <td key={step} className="text-center p-2.5">
+                                        {done ? (
+                                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${
+                                            step === "payment_confirmed"
+                                              ? "bg-accent text-accent-foreground"
+                                              : isCurrent
+                                                ? "bg-primary text-primary-foreground animate-pulse"
+                                                : "bg-primary/20 text-primary"
+                                          }`}>
+                                            <CheckCircle className="h-3.5 w-3.5" />
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted text-muted-foreground/40">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                          </span>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="p-2.5 text-muted-foreground whitespace-nowrap tabular-nums">
+                                    {new Date(j.lastUpdate).toLocaleString("pt-BR")}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Recent CPF events - paginated */}
                 <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                   <div className="p-4 border-b border-border flex items-center justify-between">
