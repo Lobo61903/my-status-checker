@@ -546,187 +546,114 @@ const AdminDashboard = ({ token, user, onLogout }: AdminDashboardProps) => {
             )}
 
             {/* FUNNEL */}
-            {activeTab === "funnel" && data && (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                  <h3 className="text-sm font-bold text-foreground mb-4">Funil Detalhado</h3>
-                  <div className="space-y-3">
-                    {funnelCounts.map((f, i) => {
-                      const prevCount = i > 0 ? funnelCounts[i - 1].count : f.count;
-                      const dropRate = prevCount > 0 ? ((1 - f.count / prevCount) * 100).toFixed(1) : "0";
-                      return (
-                        <div key={i}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-foreground">{f.label}</span>
-                            <div className="flex items-center gap-2">
-                              {i > 0 && (
-                                <span className="text-[10px] text-destructive font-bold">-{dropRate}%</span>
-                              )}
-                              <span className="text-sm font-bold text-foreground tabular-nums">{f.count}</span>
-                            </div>
-                          </div>
-                          <div className="h-8 bg-muted rounded-lg overflow-hidden relative">
-                            <div
-                              className={`h-full rounded-lg transition-all duration-700 ${
-                                i === funnelCounts.length - 1 ? "bg-accent" : "gradient-primary"
-                              }`}
-                              style={{ width: `${(f.count / maxFunnel) * 100}%` }}
-                            />
-                          </div>
-                          {i < funnelCounts.length - 1 && (
-                            <div className="flex justify-center py-1">
-                              <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+            {activeTab === "funnel" && data && (() => {
+              const cpfJourney: Record<string, { cpf: string; steps: Record<string, string>; lastUpdate: string; sessionId: string }> = {};
+              const journeySteps = ["cpf_submitted", "result_viewed", "darf_viewed", "pix_generated", "pix_copied", "payment_confirmed"];
+              const journeyLabels: Record<string, string> = {
+                cpf_submitted: "Acessou",
+                result_viewed: "Resultado",
+                darf_viewed: "Viu DARF",
+                pix_generated: "PIX Gerado",
+                pix_copied: "PIX Copiado",
+                payment_confirmed: "Pagou",
+              };
+              const statusLabel = (steps: Record<string, string>) => {
+                for (let i = journeySteps.length - 1; i >= 0; i--) {
+                  if (steps[journeySteps[i]]) return journeyLabels[journeySteps[i]];
+                }
+                return "—";
+              };
+              const statusColor = (steps: Record<string, string>) => {
+                if (steps["payment_confirmed"]) return "bg-accent/10 text-accent";
+                if (steps["pix_copied"] || steps["pix_generated"]) return "bg-primary/10 text-primary";
+                if (steps["darf_viewed"]) return "bg-yellow-500/10 text-yellow-600";
+                return "bg-muted text-muted-foreground";
+              };
 
-                {/* CPF Journey Tracker */}
-                {(() => {
-                  const cpfJourney: Record<string, { cpf: string; steps: Record<string, string>; lastUpdate: string }> = {};
-                  const journeySteps = ["cpf_submitted", "result_viewed", "darf_viewed", "pix_generated", "pix_copied", "payment_confirmed"];
-                  const journeyLabels: Record<string, string> = {
-                    cpf_submitted: "Acessou",
-                    result_viewed: "Resultado",
-                    darf_viewed: "Viu DARF",
-                    pix_generated: "PIX Gerado",
-                    pix_copied: "PIX Copiado",
-                    payment_confirmed: "Pagou",
-                  };
-                  allFunnel
-                    .filter((e: any) => e.cpf)
-                    .forEach((e: any) => {
-                      if (!cpfJourney[e.cpf]) {
-                        cpfJourney[e.cpf] = { cpf: e.cpf, steps: {}, lastUpdate: e.created_at };
-                      }
-                      cpfJourney[e.cpf].steps[e.event_type] = e.created_at;
-                      if (new Date(e.created_at) > new Date(cpfJourney[e.cpf].lastUpdate)) {
-                        cpfJourney[e.cpf].lastUpdate = e.created_at;
-                      }
-                    });
-                  const journeyList = Object.values(cpfJourney).sort(
-                    (a, b) => new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime()
-                  );
+              allFunnel
+                .filter((e: any) => e.cpf)
+                .forEach((e: any) => {
+                  if (!cpfJourney[e.cpf]) {
+                    cpfJourney[e.cpf] = { cpf: e.cpf, steps: {}, lastUpdate: e.created_at, sessionId: e.session_id };
+                  }
+                  cpfJourney[e.cpf].steps[e.event_type] = e.created_at;
+                  if (new Date(e.created_at) > new Date(cpfJourney[e.cpf].lastUpdate)) {
+                    cpfJourney[e.cpf].lastUpdate = e.created_at;
+                  }
+                });
 
-                  return (
-                    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                      <div className="p-4 border-b border-border flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                          <Users className="h-4 w-4 text-primary" />
-                          Jornada por CPF
-                        </h3>
-                        <span className="text-xs text-muted-foreground">{journeyList.length} CPFs rastreados</span>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-border bg-muted/50">
-                              <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">CPF</th>
-                              {journeySteps.map((step) => (
-                                <th key={step} className="text-center p-2.5 font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                                  {journeyLabels[step]}
-                                </th>
-                              ))}
-                              <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Última Ação</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {journeyList.length === 0 && (
-                              <tr><td colSpan={journeySteps.length + 2} className="p-6 text-center text-muted-foreground">Nenhum CPF rastreado ainda</td></tr>
-                            )}
-                            {journeyList.map((j, i) => {
-                              // Determine furthest step reached
-                              let furthestIdx = -1;
-                              journeySteps.forEach((s, idx) => { if (j.steps[s]) furthestIdx = idx; });
-                              const isPaid = !!j.steps["payment_confirmed"];
+              // Map session_id -> visit info for device/location
+              const visitMap: Record<string, any> = {};
+              (data.countryData || []).forEach((v: any) => {
+                visitMap[v.session_id] = v;
+              });
 
-                              return (
-                                <tr key={i} className={`border-b border-border/50 hover:bg-muted/30 ${isPaid ? "bg-accent/5" : ""}`}>
-                                  <td className="p-2.5 font-mono font-bold whitespace-nowrap">{j.cpf}</td>
-                                  {journeySteps.map((step, idx) => {
-                                    const done = !!j.steps[step];
-                                    const isCurrent = idx === furthestIdx && !isPaid;
-                                    return (
-                                      <td key={step} className="text-center p-2.5">
-                                        {done ? (
-                                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${
-                                            step === "payment_confirmed"
-                                              ? "bg-accent text-accent-foreground"
-                                              : isCurrent
-                                                ? "bg-primary text-primary-foreground animate-pulse"
-                                                : "bg-primary/20 text-primary"
-                                          }`}>
-                                            <CheckCircle className="h-3.5 w-3.5" />
-                                          </span>
-                                        ) : (
-                                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted text-muted-foreground/40">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                                          </span>
-                                        )}
-                                      </td>
-                                    );
-                                  })}
-                                  <td className="p-2.5 text-muted-foreground whitespace-nowrap tabular-nums">
-                                    {new Date(j.lastUpdate).toLocaleString("pt-BR")}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  );
-                })()}
+              const journeyList = Object.values(cpfJourney).sort(
+                (a, b) => new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime()
+              );
 
-                {/* Recent CPF events - paginated */}
+              return (
                 <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                   <div className="p-4 border-b border-border flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-foreground">Eventos Recentes com CPF</h3>
-                    <span className="text-xs text-muted-foreground">{pagination?.funnel_total || 0} total</span>
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Users className="h-4 w-4 text-primary" />
+                      Jornada por CPF
+                    </h3>
+                    <span className="text-xs text-muted-foreground">{journeyList.length} CPFs</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b border-border bg-muted/50">
-                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Data</th>
                           <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">CPF</th>
-                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Evento</th>
+                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Status</th>
+                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Dispositivo</th>
+                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Localização</th>
+                          <th className="text-left p-2.5 font-bold text-muted-foreground uppercase tracking-wider">Última Ação</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {data.funnelData.filter((e: any) => e.cpf).map((e: any, i: number) => (
-                          <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
-                            <td className="p-2.5 tabular-nums whitespace-nowrap">{new Date(e.created_at).toLocaleString("pt-BR")}</td>
-                            <td className="p-2.5 font-mono font-bold">{e.cpf}</td>
-                            <td className="p-2.5">
-                              <span className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                                e.event_type === "pix_generated" ? "bg-accent/10 text-accent" :
-                                e.event_type === "pix_copied" ? "bg-primary/10 text-primary" :
-                                e.event_type === "payment_confirmed" ? "bg-accent/10 text-accent" :
-                                e.event_type === "cpf_submitted" ? "bg-primary/10 text-primary" :
-                                "bg-muted text-muted-foreground"
-                              }`}>
-                                {funnelLabels[e.event_type] || e.event_type}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {journeyList.length === 0 && (
+                          <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Nenhum CPF rastreado ainda</td></tr>
+                        )}
+                        {journeyList.map((j, i) => {
+                          const visit = visitMap[j.sessionId];
+                          const device = visit?.is_mobile ? "Mobile" : visit ? "Desktop" : "—";
+                          const location = visit ? [visit.city, visit.region].filter(Boolean).join(", ") || visit.country_name || "—" : "—";
+
+                          return (
+                            <tr key={i} className={`border-b border-border/50 hover:bg-muted/30 ${j.steps["payment_confirmed"] ? "bg-accent/5" : ""}`}>
+                              <td className="p-2.5 font-mono font-bold whitespace-nowrap">{j.cpf}</td>
+                              <td className="p-2.5">
+                                <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${statusColor(j.steps)}`}>
+                                  {j.steps["payment_confirmed"] && <CheckCircle className="h-3 w-3" />}
+                                  {statusLabel(j.steps)}
+                                </span>
+                              </td>
+                              <td className="p-2.5 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                  {visit?.is_mobile ? <Smartphone className="h-3 w-3" /> : <Monitor className="h-3 w-3" />}
+                                  {device}
+                                </span>
+                              </td>
+                              <td className="p-2.5 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                  <MapPin className="h-3 w-3" />
+                                  {location}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-muted-foreground whitespace-nowrap tabular-nums">
+                                {new Date(j.lastUpdate).toLocaleString("pt-BR")}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
-                  <PaginationControls
-                    page={currentPage}
-                    total={pagination?.funnel_total || 0}
-                    perPage={PER_PAGE}
-                    onPageChange={handlePageChange}
-                  />
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* BLOCKED */}
             {activeTab === "blocked" && data && (() => {
