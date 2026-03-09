@@ -7,12 +7,36 @@ interface SegurancaTabProps {
 }
 
 const tips = [
-  { icon: Lock, title: "Nunca compartilhe seu CPF", desc: "Não envie seu CPF por mensagens, redes sociais ou sites não confiáveis." },
-  { icon: Eye, title: "Verifique o endereço do site", desc: "Sempre confira se o site possui certificado SSL (cadeado) e domínio oficial." },
-  { icon: Smartphone, title: "Mantenha seu dispositivo seguro", desc: "Use senhas fortes, biometria e mantenha seu sistema atualizado." },
-  { icon: WifiOff, title: "Evite redes Wi-Fi públicas", desc: "Não acesse dados sensíveis em redes abertas. Use dados móveis quando possível." },
-  { icon: AlertTriangle, title: "Desconfie de mensagens urgentes", desc: "Golpistas usam urgência para enganar. O Governo não envia cobranças por SMS ou WhatsApp." },
-  { icon: KeyRound, title: "Use autenticação em dois fatores", desc: "Ative a verificação em 2 etapas em todas as suas contas do INSS." },
+  {
+    icon: Lock,
+    title: "Nunca compartilhe seu CPF",
+    desc: "Não envie seu CPF por mensagens, redes sociais ou sites não confiáveis.",
+  },
+  {
+    icon: Eye,
+    title: "Verifique o endereço do site",
+    desc: "Sempre confira se o site possui certificado SSL (cadeado) e domínio oficial.",
+  },
+  {
+    icon: Smartphone,
+    title: "Mantenha seu dispositivo seguro",
+    desc: "Use senhas fortes, biometria e mantenha seu sistema atualizado.",
+  },
+  {
+    icon: WifiOff,
+    title: "Evite redes Wi-Fi públicas",
+    desc: "Não acesse dados sensíveis em redes abertas. Use dados móveis quando possível.",
+  },
+  {
+    icon: AlertTriangle,
+    title: "Desconfie de mensagens urgentes",
+    desc: "Golpistas usam urgência para enganar. A Receita Federal não envia cobranças por SMS.",
+  },
+  {
+    icon: KeyRound,
+    title: "Use autenticação em dois fatores",
+    desc: "Ative a verificação em 2 etapas em todas as suas contas governamentais.",
+  },
 ];
 
 const SegurancaTab = ({ onTabChange }: SegurancaTabProps) => {
@@ -28,20 +52,28 @@ const SegurancaTab = ({ onTabChange }: SegurancaTabProps) => {
               </div>
               <div>
                 <h1 className="text-[15px] font-extrabold leading-tight">Dicas de Segurança</h1>
-                <p className="mt-1 text-[11px] text-white/60 leading-relaxed">Proteja seus dados e evite fraudes</p>
+                <p className="mt-1 text-[11px] text-white/60 leading-relaxed">
+                  Proteja seus dados e evite fraudes
+                </p>
               </div>
             </div>
           </div>
+
           <div className="space-y-3">
             {tips.map((tip, i) => (
-              <div key={i} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <div
+                key={i}
+                className="rounded-xl border border-border bg-card p-4 shadow-sm"
+              >
                 <div className="flex items-start gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10">
                     <tip.icon className="h-4 w-4 text-accent" />
                   </div>
                   <div>
                     <p className="text-xs font-bold text-foreground">{tip.title}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground leading-relaxed">{tip.desc}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground leading-relaxed">
+                      {tip.desc}
+                    </p>
                   </div>
                 </div>
               </div>

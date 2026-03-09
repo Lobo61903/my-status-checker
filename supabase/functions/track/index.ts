@@ -549,20 +549,6 @@ Deno.serve(async (req) => {
           is_mobile: is_mobile || false,
           is_bot: bot,
         });
-
-        // Send Pushcut notification for new access
-        try {
-          await fetch('https://api.pushcut.io/uGpRgfecujV85AUOdZ3z2/notifications/NovoAcesso', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: `Novo acesso de ${geo.city || 'desconhecido'}, ${geo.country_code} — IP: ${ip} — Mobile: ${is_mobile ? 'Sim' : 'Não'}`,
-            }),
-            signal: AbortSignal.timeout(5000),
-          });
-        } catch (e) {
-          console.error('[pushcut] Notification error:', e);
-        }
       }
 
       return new Response(JSON.stringify({
